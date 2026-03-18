@@ -1,252 +1,107 @@
 import Foundation
 import AppKit
+import Observation
+import WuhuUI
 
-// MARK: - Reactive Primitive
+// Debug logger — GUI apps may not flush stdout.
+@MainActor
+func log(_ msg: String) {
+    print(msg)
+    fflush(stdout)
+}
 
-/// Minimal signal. Stores a value, notifies one observer on change.
-final class Signal<T: Equatable>: @unchecked Sendable {
-    private var _value: T
-    var onChange: (() -> Void)?
+// MARK: - App Model
 
-    init(_ value: T) { _value = value }
+/// The app's state. Plain @Observable — no signals, no framework coupling.
+@Observable
+@MainActor
+final class DocModel {
+    var items: [ItemModel] = [
+        ItemModel(color: .red, height: 80),
+        ItemModel(color: .blue, height: 60),
+        ItemModel(color: .green, height: 100),
+    ]
+}
 
-    var value: T {
-        get { _value }
-        set {
-            guard _value != newValue else { return }
-            _value = newValue
-            onChange?()
-        }
+@Observable
+@MainActor
+final class ItemModel {
+    var color: PlatformColor
+    var height: CGFloat
+
+    init(color: PlatformColor, height: CGFloat) {
+        self.color = color
+        self.height = height
     }
 }
 
-// MARK: - Layout Primitives
+// MARK: - Components
 
-struct ProposedSize {
-    var width: CGFloat
-    var height: CGFloat?
-}
+/// Root component: reads the model, produces a VStack of color fills.
+struct DocRoot: Component, Equatable {
+    // Components are value types and equatable.
+    // They capture what they need from the model as props.
+    // For this demo, the root reads the model directly.
+    let model: ObjectIdentifier  // identity-based equality for the observable
 
-struct LayoutResult {
-    var size: CGSize
-    var childFrames: [CGRect] // one per child, in local coordinates
-}
+    @MainActor static var _model: DocModel?
 
-protocol DocLayout {
-    func layout(children: [CGSize], proposal: ProposedSize) -> LayoutResult
-}
-
-struct VStackLayout: DocLayout {
-    var spacing: CGFloat = 0
-
-    func layout(children: [CGSize], proposal: ProposedSize) -> LayoutResult {
-        var y: CGFloat = 0
-        var frames: [CGRect] = []
-        var maxWidth: CGFloat = 0
-
-        for (i, childSize) in children.enumerated() {
-            if i > 0 { y += spacing }
-            frames.append(CGRect(x: 0, y: y, width: childSize.width, height: childSize.height))
-            y += childSize.height
-            maxWidth = max(maxWidth, childSize.width)
+    @MainActor func body() -> ContainerElement {
+        let model = Self._model!
+        let children = model.items.enumerated().map { i, item in
+            AnyElement(ColorFillElement(color: item.color, height: item.height))
         }
-
-        return LayoutResult(
-            size: CGSize(width: proposal.width, height: y),
-            childFrames: frames
+        return ContainerElement(
+            layout: AnyLayout(VStackLayout(spacing: 8)),
+            children: children
         )
     }
-}
 
-// MARK: - Layout Tree Node
-
-/// A node in the layout tree. Either a container (has layout + children)
-/// or a leaf (has content that knows how to measure and draw).
-final class LayoutNode {
-    let id: String
-    var layout: (any DocLayout)?
-    var children: [LayoutNode] = []
-    var leaf: LeafContent?
-
-    // Layout cache
-    var cachedProposal: ProposedSize?
-    var cachedResult: LayoutResult?
-    var cachedSize: CGSize?
-
-    // Frame in document coordinates, set during layout pass
-    var frame: CGRect = .zero
-
-    init(id: String, layout: (any DocLayout)? = nil, leaf: LeafContent? = nil) {
-        self.id = id
-        self.layout = layout
-        self.leaf = leaf
-    }
-
-    func invalidate() {
-        cachedResult = nil
-        cachedSize = nil
-        cachedProposal = nil
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.model == rhs.model
     }
 }
 
-// MARK: - Leaf Content
+// MARK: - Document View
 
-/// What a leaf node contains: how to measure it, how to draw it.
-protocol LeafContent {
-    func sizeThatFits(proposal: ProposedSize) -> CGSize
-    func draw(in ctx: CGContext, bounds: CGRect)
-}
-
-/// A colored rectangle with observable size and color.
-final class ColorRect: LeafContent {
-    let color: Signal<NSColor>
-    let height: Signal<CGFloat>
-
-    init(color: NSColor, height: CGFloat) {
-        self.color = Signal(color)
-        self.height = Signal(height)
-    }
-
-    func sizeThatFits(proposal: ProposedSize) -> CGSize {
-        CGSize(width: proposal.width, height: height.value)
-    }
-
-    func draw(in ctx: CGContext, bounds: CGRect) {
-        ctx.setFillColor(color.value.cgColor)
-        ctx.fill(bounds)
-    }
-}
-
-// MARK: - Layout Engine
-
-/// Walks the tree, computes sizes bottom-up, assigns frames top-down.
-enum LayoutEngine {
-    /// Measure a node given a size proposal. Returns the node's size.
-    static func measure(_ node: LayoutNode, proposal: ProposedSize) -> CGSize {
-        if let leaf = node.leaf {
-            let size = leaf.sizeThatFits(proposal: proposal)
-            node.cachedSize = size
-            return size
-        }
-
-        guard let layout = node.layout else { return .zero }
-
-        // Measure children
-        let childSizes = node.children.map { measure($0, proposal: proposal) }
-
-        // Run layout
-        let result = layout.layout(children: childSizes, proposal: proposal)
-        node.cachedResult = result
-        node.cachedSize = result.size
-        return result.size
-    }
-
-    /// Assign frames in document coordinates. Call after measure.
-    static func assignFrames(_ node: LayoutNode, origin: CGPoint) {
-        node.frame = CGRect(origin: origin, size: node.cachedSize ?? .zero)
-
-        guard let result = node.cachedResult else { return }
-
-        for (i, child) in node.children.enumerated() {
-            let childFrame = result.childFrames[i]
-            let childOrigin = CGPoint(
-                x: origin.x + childFrame.origin.x,
-                y: origin.y + childFrame.origin.y
-            )
-            assignFrames(child, origin: childOrigin)
-        }
-    }
-
-    /// Full layout pass.
-    static func layout(_ root: LayoutNode, viewportWidth: CGFloat) {
-        let proposal = ProposedSize(width: viewportWidth)
-        _ = measure(root, proposal: proposal)
-        assignFrames(root, origin: .zero)
-    }
-
-    /// Collect all leaf nodes (the things we actually draw).
-    static func leaves(_ node: LayoutNode) -> [LayoutNode] {
-        if node.leaf != nil { return [node] }
-        return node.children.flatMap { leaves($0) }
-    }
-}
-
-// MARK: - Renderer
-
-/// Manages CALayers for visible leaf nodes. Owns the layer tree.
-final class Renderer {
-    let container: CALayer
-    private var activeLayers: [String: CALayer] = [:]
-
-    init(container: CALayer) {
-        self.container = container
-    }
-
-    func render(root: LayoutNode, visibleRect: CGRect) {
-        let allLeaves = LayoutEngine.leaves(root)
-
-        // Determine visible set
-        let visible = allLeaves.filter { $0.frame.intersects(visibleRect) }
-        let visibleIDs = Set(visible.map(\.id))
-
-        // Remove layers for leaves no longer visible
-        for (id, layer) in activeLayers where !visibleIDs.contains(id) {
-            layer.removeFromSuperlayer()
-            activeLayers.removeValue(forKey: id)
-        }
-
-        // Add/update layers for visible leaves
-        for node in visible {
-            let layer: CALayer
-            if let existing = activeLayers[node.id] {
-                layer = existing
-            } else {
-                layer = DrawLayer()
-                container.addSublayer(layer)
-                activeLayers[node.id] = layer
-            }
-
-            // Update frame
-            // Flip Y: CALayer origin is bottom-left, our layout is top-left
-            let flippedY = container.bounds.height - node.frame.maxY
-            layer.frame = CGRect(
-                x: node.frame.origin.x,
-                y: flippedY,
-                width: node.frame.width,
-                height: node.frame.height
-            )
-
-            // Attach content for drawing
-            (layer as? DrawLayer)?.leafContent = node.leaf
-            layer.setNeedsDisplay()
-        }
-    }
-}
-
-/// A CALayer that draws leaf content via Core Graphics.
-final class DrawLayer: CALayer {
-    var leafContent: LeafContent?
-
-    override func draw(in ctx: CGContext) {
-        guard let content = leafContent else { return }
-        let bounds = CGRect(origin: .zero, size: self.bounds.size)
-        content.draw(in: ctx, bounds: bounds)
-    }
-}
-
-// MARK: - Document View (NSView host)
-
+@MainActor
 final class DocumentView: NSView {
-    let root: LayoutNode
+    let reconciler = Reconciler()
     let renderer: Renderer
+    let model: DocModel
+    private var pendingDirtyPaths: Set<NodePath> = []
+    private var updateScheduled = false
 
-    init(root: LayoutNode) {
-        self.root = root
+    init(model: DocModel) {
+        self.model = model
         let backing = CALayer()
         self.renderer = Renderer(container: backing)
         super.init(frame: .zero)
         self.wantsLayer = true
         self.layer = backing
+
+        // Set up the component's model reference.
+        DocRoot._model = model
+
+        // Build the initial tree.
+        let rootComponent = DocRoot(model: ObjectIdentifier(model))
+        let rootElement = AnyElement(ComponentElement(rootComponent))
+        reconciler.mount(element: rootElement)
+
+        // Wire observation: when a node becomes dirty, schedule an update.
+        reconciler.onDirty = { @Sendable [weak self] path in
+            Task { @MainActor in
+                self?.scheduleDirty(path)
+            }
+        }
+
+        // Wire lifecycle callbacks.
+        renderer.onAppear = { path in
+            log("  appear: \(path)")
+        }
+        renderer.onDisappear = { path in
+            log("  disappear: \(path)")
+        }
     }
 
     @available(*, unavailable)
@@ -254,12 +109,43 @@ final class DocumentView: NSView {
 
     override var isFlipped: Bool { true }
 
+    private func scheduleDirty(_ path: NodePath) {
+        pendingDirtyPaths.insert(path)
+        guard !updateScheduled else { return }
+        updateScheduled = true
+        // Batch: collect all dirty paths in this runloop tick, then process.
+        DispatchQueue.main.async { [weak self] in
+            self?.processDirtyPaths()
+        }
+    }
+
+    private func processDirtyPaths() {
+        updateScheduled = false
+        let paths = pendingDirtyPaths
+        pendingDirtyPaths = []
+
+        guard !paths.isEmpty else { return }
+
+        log("⟳ reconcile: \(paths.map(\.description).sorted())")
+
+        // 1. Reconcile dirty nodes.
+        reconciler.transaction(dirtyPaths: paths)
+
+        // 2. Layout.
+        relayout()
+    }
+
     func relayout() {
         let width = bounds.width
-        guard width > 0 else { return }
+        guard width > 0, let root = reconciler.root else { return }
+
+        // Layout pass.
         LayoutEngine.layout(root, viewportWidth: width)
+
+        // Update container bounds.
         renderer.container.bounds = self.bounds
-        // For this demo, everything is visible (no scrolling)
+
+        // Render (for now, everything is visible — no scrolling).
         renderer.render(root: root, visibleRect: bounds)
     }
 
@@ -267,38 +153,75 @@ final class DocumentView: NSView {
         super.layout()
         relayout()
     }
+
+    // MARK: - Hit Testing (wired outside the framework)
+
+    override func mouseDown(with event: NSEvent) {
+        guard let root = reconciler.root else { return }
+
+        let locationInWindow = event.locationInWindow
+        let locationInView = convert(locationInWindow, from: nil)
+
+        // Our layout is top-left origin, NSView with isFlipped=true matches.
+        let point = CGPoint(x: locationInView.x, y: locationInView.y)
+
+        if let hit = HitTest.test(point: point, root: root) {
+            log("🎯 hit: \(hit.path) at local(\(Int(hit.localPoint.x)), \(Int(hit.localPoint.y)))")
+
+            // Demonstrate the hit path (root to leaf).
+            let path = HitTest.hitPath(point: point, root: root)
+            log("   path: \(path.map(\.path.description).joined(separator: " → "))")
+        } else {
+            log("🎯 miss")
+        }
+    }
+}
+
+// MARK: - Preference Demo: collect all leaf frames
+
+/// A preference key that collects all leaf frames in tree order.
+/// Demonstrates the "mirrored layout tree via preference" idea.
+struct LeafFrameEntry: Equatable {
+    var path: NodePath
+    var frame: CGRect
+}
+
+struct LeafFrameKey: PreferenceKey {
+    typealias Value = [LeafFrameEntry]
+    static var defaultValue: [LeafFrameEntry] { [] }
+    static func reduce(value: inout [LeafFrameEntry], nextValue: [LeafFrameEntry]) {
+        value.append(contentsOf: nextValue)
+    }
+}
+
+@MainActor
+func demoPreferences(root: Node) {
+    let frames: [LeafFrameEntry] = PreferenceEngine.collect(
+        key: LeafFrameKey.self,
+        from: root
+    ) { node -> [LeafFrameEntry]? in
+        // Only leaves report.
+        guard node.children.isEmpty else { return nil }
+        return [LeafFrameEntry(path: node.path, frame: node.frame)]
+    }
+
+    log("📐 leaf frames (via preference):")
+    for entry in frames {
+        log("   \(entry.path): \(Int(entry.frame.origin.x)),\(Int(entry.frame.origin.y)) \(Int(entry.frame.width))×\(Int(entry.frame.height))")
+    }
 }
 
 // MARK: - App Setup
 
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     var docView: DocumentView!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Build model
-        let rect1 = ColorRect(color: .systemRed, height: 80)
-        let rect2 = ColorRect(color: .systemBlue, height: 60)
-        let rect3 = ColorRect(color: .systemGreen, height: 100)
+        let model = DocModel()
 
-        // Build layout tree
-        let root = LayoutNode(id: "root", layout: VStackLayout(spacing: 8))
-        root.children = [
-            LayoutNode(id: "r1", leaf: rect1),
-            LayoutNode(id: "r2", leaf: rect2),
-            LayoutNode(id: "r3", leaf: rect3),
-        ]
-
-        // Wire reactivity: any signal change → relayout
-        let scheduleRelayout = { [weak self] in
-            DispatchQueue.main.async { self?.docView.relayout() }
-        }
-        rect1.color.onChange = scheduleRelayout
-        rect2.height.onChange = scheduleRelayout
-        rect3.color.onChange = scheduleRelayout
-
-        // Create window
-        docView = DocumentView(root: root)
+        docView = DocumentView(model: model)
 
         let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 400))
         contentView.wantsLayer = true
@@ -319,29 +242,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer: false
         )
         window.contentView = contentView
-        window.title = "DocEngine Demo"
+        window.title = "WuhuUI Demo"
         window.makeKeyAndOrderFront(nil)
 
-        // Controls: toggle color and size after delays
+        // Reactive updates: mutate the model, framework handles the rest.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            print("→ rect1: red → orange"); fflush(stdout)
-            rect1.color.value = .systemOrange
+            log("\n→ item[0]: red → orange")
+            model.items[0].color = .orange
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            print("→ rect2: height 60 → 150"); fflush(stdout)
-            rect2.height.value = 150
+            log("\n→ item[1]: height 60 → 150")
+            model.items[1].height = 150
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
-            print("→ rect3: green → purple"); fflush(stdout)
-            rect3.color.value = .systemPurple
+            log("\n→ item[2]: green → purple")
+            model.items[2].color = .purple
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-            print("→ rect2: height 150 → 40"); fflush(stdout)
-            rect2.height.value = 40
+            log("\n→ item[1]: height 150 → 40")
+            model.items[1].height = 40
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 7.5) {
-            print("✓ demo complete"); fflush(stdout)
-            NSApp.terminate(nil)
+            log("\n→ add new item (gray, height 50)")
+            model.items.append(ItemModel(color: .gray, height: 50))
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) {
+            // Demonstrate preference collection.
+            if let root = self.docView.reconciler.root {
+                demoPreferences(root: root)
+            }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
+            log("\n✓ demo complete — click anywhere to hit-test, or close the window")
         }
     }
 }
