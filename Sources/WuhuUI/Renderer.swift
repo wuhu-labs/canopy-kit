@@ -13,6 +13,13 @@ final class DrawingLayer: CALayer {
         drawing.draw(in: ctx, bounds: bounds)
         self.drawing = drawing  // write back (cache may have mutated)
     }
+
+    // Ensure sublayers also get contentsScale.
+    override var contentsScale: CGFloat {
+        didSet {
+            setNeedsDisplay()
+        }
+    }
 }
 
 // MARK: - Renderer
@@ -55,14 +62,9 @@ public final class Renderer {
                 activeLayers[id] = layer
             }
 
-            // Flip Y: our layout is top-left origin, CALayer is bottom-left.
-            let flippedY = container.bounds.height - node.frame.maxY
-            let newFrame = CGRect(
-                x: node.frame.origin.x,
-                y: flippedY,
-                width: node.frame.width,
-                height: node.frame.height
-            )
+            // DocumentView.isFlipped = true, so our coordinate system is
+            // already top-left origin. No Y flip needed.
+            let newFrame = node.frame
 
             if layer.frame != newFrame {
                 CATransaction.begin()

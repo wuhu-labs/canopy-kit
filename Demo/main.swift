@@ -34,15 +34,20 @@ func buildTree() -> RenderNode {
 
 // MARK: - Document View (inside scroll view)
 
+/// The document view is the scroll view's content. It overrides
+/// `prepareContent(in:)` to synchronously update layers as the
+/// user scrolls — no async notification, no white flash.
 @MainActor
 final class DocumentView: NSView {
     let root: RenderNode
     let renderer: Renderer
+    private var needsInitialLayout = true
 
     init(root: RenderNode) {
         self.root = root
         let backing = CALayer()
         backing.contentsScale = NSScreen.main?.backingScaleFactor ?? 2
+        backing.isGeometryFlipped = true
         self.renderer = Renderer(container: backing)
         super.init(frame: .zero)
         self.wantsLayer = true
@@ -54,75 +59,31 @@ final class DocumentView: NSView {
 
     override var isFlipped: Bool { true }
 
-    func relayout(width: CGFloat, visibleRect: CGRect) {
-        root.layoutPass(width: width)
-        let contentSize = root.cachedSize ?? .zero
-
-        // Resize ourselves to the full content height so the scroll view
-        // knows the document size.
-        frame = CGRect(origin: frame.origin, size: CGSize(width: width, height: contentSize.height))
-
-        renderer.container.bounds = CGRect(origin: .zero, size: frame.size)
-        renderer.container.frame = CGRect(origin: .zero, size: frame.size)
-        renderer.render(root: root, visibleRect: visibleRect)
+    /// Called synchronously by AppKit's responsive scrolling system
+    /// when the visible region changes (scroll or overdraw).
+    override func prepareContent(in rect: NSRect) {
+        super.prepareContent(in: rect)
+        updateRendering(visibleRect: rect)
     }
-}
-
-// MARK: - Scroll view wrapper
-
-@MainActor
-final class ScrollDocumentView: NSView {
-    let scrollView: NSScrollView
-    let docView: DocumentView
-
-    init(root: RenderNode) {
-        self.docView = DocumentView(root: root)
-        self.scrollView = NSScrollView()
-        super.init(frame: .zero)
-
-        scrollView.documentView = docView
-        scrollView.hasVerticalScroller = true
-        scrollView.autoresizingMask = [.width, .height]
-        scrollView.drawsBackground = false
-
-        addSubview(scrollView)
-
-        // Observe scroll and resize.
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(scrollOrResize),
-            name: NSView.boundsDidChangeNotification,
-            object: scrollView.contentView
-        )
-        scrollView.contentView.postsBoundsChangedNotifications = true
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(scrollOrResize),
-            name: NSView.frameDidChangeNotification,
-            object: scrollView
-        )
-        scrollView.postsFrameChangedNotifications = true
-    }
-
-    @available(*, unavailable)
-    required init?(coder: NSCoder) { fatalError() }
 
     override func layout() {
         super.layout()
-        scrollView.frame = bounds
-        updateLayout()
-    }
-
-    @objc private func scrollOrResize() {
-        updateLayout()
-    }
-
-    private func updateLayout() {
+        guard let scrollView = enclosingScrollView else { return }
         let width = scrollView.contentView.bounds.width
         guard width > 0 else { return }
-        let visibleRect = scrollView.contentView.bounds
-        docView.relayout(width: width, visibleRect: visibleRect)
+
+        // Re-measure on width change.
+        root.layoutPass(width: width)
+        let contentSize = root.cachedSize ?? .zero
+        frame = CGRect(origin: frame.origin, size: CGSize(width: width, height: contentSize.height))
+        renderer.container.frame = CGRect(origin: .zero, size: frame.size)
+        renderer.container.bounds = CGRect(origin: .zero, size: frame.size)
+
+        updateRendering(visibleRect: scrollView.contentView.bounds)
+    }
+
+    private func updateRendering(visibleRect: CGRect) {
+        renderer.render(root: root, visibleRect: visibleRect)
     }
 }
 
@@ -134,17 +95,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let root = buildTree()
-        let scrollDoc = ScrollDocumentView(root: root)
 
-        scrollDoc.translatesAutoresizingMaskIntoConstraints = false
+        let docView = DocumentView(root: root)
+
+        let scrollView = NSScrollView()
+        scrollView.documentView = docView
+        scrollView.hasVerticalScroller = true
+        scrollView.drawsBackground = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
 
         let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 600, height: 700))
-        contentView.addSubview(scrollDoc)
+        contentView.addSubview(scrollView)
         NSLayoutConstraint.activate([
-            scrollDoc.topAnchor.constraint(equalTo: contentView.topAnchor),
-            scrollDoc.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
-            scrollDoc.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
-            scrollDoc.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
+            scrollView.topAnchor.constraint(equalTo: contentView.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor),
         ])
 
         window = NSWindow(
