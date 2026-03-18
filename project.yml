@@ -17,7 +17,6 @@ targets:
       - path: Demo
     dependencies:
       - package: WuhuUI
-        product: WuhuUI
     settings:
       INFOPLIST_KEY_NSMainStoryboardFile: ""
       INFOPLIST_KEY_NSPrincipalClass: NSApplication
