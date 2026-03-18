@@ -50,7 +50,7 @@ public struct TextDrawing: CustomDrawing {
       var leading: CGFloat = 0
       let lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
       height += ascent + descent + leading
-      maxLineWidth = max(maxLineWidth, lineWidth)
+      maxLineWidth = max(maxLineWidth, ceil(lineWidth))
 
       offset += count
     }
