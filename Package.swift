@@ -12,10 +12,5 @@ let package = Package(
             name: "WuhuUI",
             path: "Sources/WuhuUI"
         ),
-        .executableTarget(
-            name: "DocEngineDemo",
-            dependencies: ["WuhuUI"],
-            path: "Demo"
-        ),
     ]
 )
