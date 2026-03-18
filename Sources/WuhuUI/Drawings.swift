@@ -39,6 +39,7 @@ public struct TextDrawing: CustomDrawing {
     let length = CFAttributedStringGetLength(attributedString)
     var offset = 0
     var height: CGFloat = 0
+    var maxLineWidth: CGFloat = 0
 
     while offset < length {
       let count = CTTypesetterSuggestLineBreak(cache.typesetter, offset, Double(width))
@@ -47,13 +48,14 @@ public struct TextDrawing: CustomDrawing {
       var ascent: CGFloat = 0
       var descent: CGFloat = 0
       var leading: CGFloat = 0
-      CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
+      let lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
       height += ascent + descent + leading
+      maxLineWidth = max(maxLineWidth, lineWidth)
 
       offset += count
     }
 
-    return CGSize(width: width, height: height)
+    return CGSize(width: min(CGFloat(maxLineWidth), width), height: height)
   }
 
   // MARK: - Draw
