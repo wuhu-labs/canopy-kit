@@ -85,21 +85,19 @@ public extension RenderNode {
       content = .leaf(drawing)
 
     case let .container(layout, children):
-      // Measure children first.
-      var layoutChildren: [LayoutChild] = children.map { child in
-        let childSize = child.measure(proposal: proposal)
-        return LayoutChild(size: childSize)
+      // Create measurable proxies — the layout decides what width each child gets.
+      let subviews = children.map { child in
+        LayoutSubview { proposal in
+          child.measure(proposal: proposal)
+        }
       }
 
-      // Ask layout for container size.
-      size = layout.sizeThatFits(children: layoutChildren, proposal: proposal)
+      let result = layout.layout(subviews: subviews, proposal: proposal)
+      size = result.size
 
-      // Place children.
-      layout.placeChildren(children: &layoutChildren, proposal: proposal, size: size)
-
-      // Store origins on child nodes.
+      // Store placements on child nodes.
       for (i, child) in children.enumerated() {
-        child.frame = CGRect(origin: layoutChildren[i].origin, size: layoutChildren[i].size)
+        child.frame = CGRect(origin: result.placements[i].origin, size: result.placements[i].size)
       }
     }
 

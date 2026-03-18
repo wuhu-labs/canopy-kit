@@ -169,8 +169,12 @@ func buildMarkdownTree() -> RenderNode {
     case .bulletList:
       let count = Int.random(in: 3 ... 6, using: &rng)
       for _ in 0 ..< count {
-        let text = "  •  " + bulletPoints[Int.random(in: 0 ..< bulletPoints.count, using: &rng)]
-        children.append(RenderNode.leaf(AnyDrawing(TextDrawing(text, fontSize: 14))))
+        let text = bulletPoints[Int.random(in: 0 ..< bulletPoints.count, using: &rng)]
+        let bullet = RenderNode.leaf(AnyDrawing(TextDrawing("•", fontSize: 14)))
+        let body = RenderNode.leaf(AnyDrawing(TextDrawing(text, fontSize: 14)))
+        let row = RenderNode.container(AnyLayout(HStackLayout(spacing: 6)), [bullet, body])
+        let indented = RenderNode.container(AnyLayout(InsetLayout(left: 16)), [row])
+        children.append(indented)
       }
 
     case .separator:
