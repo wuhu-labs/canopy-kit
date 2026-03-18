@@ -144,6 +144,7 @@ struct ReactiveFeedDemoView: View {
           isEquivalent: { lhs, rhs in lhs.model === rhs.model }
         )
       )
+      .autoScrollWhenHeightChanges()
     }
   }
 
@@ -153,6 +154,97 @@ struct ReactiveFeedDemoView: View {
 
   private func removeHeadButtonTapped() {
     model.removeHead()
+  }
+}
+
+@Observable
+final class MarkdownStreamModel {
+  @ObservationIgnored private let fullMarkdownCharacters: [Character]
+
+  var visibleMarkdown = ""
+  var visibleCharacterCount = 0
+  var isStreaming = false
+
+  init(multiplier: Int = 100) {
+    fullMarkdownCharacters = Array(makeStreamingMarkdownDocument(multiplier: multiplier))
+  }
+
+  var totalCharacterCount: Int {
+    fullMarkdownCharacters.count
+  }
+
+  var progressText: String {
+    "\(visibleCharacterCount) / \(totalCharacterCount) chars"
+  }
+
+  func startStreaming() {
+    guard !isStreaming, visibleCharacterCount < totalCharacterCount else { return }
+    isStreaming = true
+  }
+
+  func pauseStreaming() {
+    isStreaming = false
+  }
+
+  func reset() {
+    pauseStreaming()
+    visibleMarkdown = ""
+    visibleCharacterCount = 0
+  }
+
+  func advanceOneCharacter() {
+    guard isStreaming else { return }
+    guard visibleCharacterCount < totalCharacterCount else {
+      isStreaming = false
+      return
+    }
+
+    visibleMarkdown.append(fullMarkdownCharacters[visibleCharacterCount])
+    visibleCharacterCount += 1
+
+    if visibleCharacterCount == totalCharacterCount {
+      isStreaming = false
+    }
+  }
+}
+
+struct MarkdownStreamDemoView: View {
+  @State private var model = MarkdownStreamModel()
+  private let timer = Timer.publish(every: 1 / 60, on: .main, in: .common).autoconnect()
+
+  var body: some View {
+    VStack(spacing: 12) {
+      HStack {
+        Text(model.progressText)
+        Spacer()
+        Button(model.isStreaming ? "Pause" : "Start") { startPauseButtonTapped() }
+        Button("Reset") { resetButtonTapped() }
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 12)
+
+      ComponentTreeView(
+        root: AnyComponent(MarkdownDocumentComponent(source: model.visibleMarkdown))
+      )
+      .autoScrollWhenHeightChanges()
+    }
+    .onReceive(timer) { _ in
+      model.advanceOneCharacter()
+    }
+    .task { model.startStreaming() }
+  }
+
+  private func startPauseButtonTapped() {
+    if model.isStreaming {
+      model.pauseStreaming()
+    } else {
+      model.startStreaming()
+    }
+  }
+
+  private func resetButtonTapped() {
+    model.reset()
+    model.startStreaming()
   }
 }
 

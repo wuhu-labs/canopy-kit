@@ -7,9 +7,15 @@ let package = Package(
   products: [
     .library(name: "WuhuUI", targets: ["WuhuUI"]),
   ],
+  dependencies: [
+    .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.7.3"),
+  ],
   targets: [
     .target(
       name: "WuhuUI",
+      dependencies: [
+        .product(name: "Markdown", package: "swift-markdown"),
+      ],
       path: "Sources/WuhuUI"
     ),
     .executableTarget(

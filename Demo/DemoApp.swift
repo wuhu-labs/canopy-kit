@@ -28,6 +28,8 @@ struct DemoRootView: View {
           ComponentDocumentDemoView()
         case .reactiveFeed:
           ReactiveFeedDemoView()
+        case .markdownStream:
+          MarkdownStreamDemoView()
         }
       }
       .navigationTitle((selection ?? .directRenderTree).title)
@@ -39,6 +41,7 @@ enum DemoKind: String, CaseIterable, Identifiable {
   case directRenderTree
   case componentDocument
   case reactiveFeed
+  case markdownStream
 
   var id: Self { self }
 
@@ -50,6 +53,8 @@ enum DemoKind: String, CaseIterable, Identifiable {
       "Component Document"
     case .reactiveFeed:
       "Reactive Feed"
+    case .markdownStream:
+      "Markdown Stream"
     }
   }
 }

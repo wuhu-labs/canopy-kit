@@ -142,3 +142,40 @@ func renderSpacer(_ height: CGFloat) -> RenderNode {
 func demoParagraph(index: Int) -> String {
   paragraphs[index % paragraphs.count]
 }
+
+func streamingMarkdownChunk(index: Int) -> String {
+  """
+  ## Update \(index)
+
+  \(demoParagraph(index: index))
+
+  - Bullet \(index).1
+  - Bullet \(index).2
+
+  > Quoted thought \(index)
+  >
+  > - nested quote item \(index).a
+  > - nested quote item \(index).b
+  >
+  > \(demoParagraph(index: index + 1))
+  """
+}
+
+let markdownStreamingPrelude = """
+# Streaming Markdown
+
+This demo parses real Markdown into the component tree.
+
+> A block quote is a real node.
+>
+> - It can hold a nested list.
+> - It can keep growing as content streams in.
+"""
+
+func makeStreamingMarkdownDocument(multiplier: Int) -> String {
+  let body = (1 ... multiplier)
+    .map { streamingMarkdownChunk(index: $0) }
+    .joined(separator: "\n\n")
+
+  return markdownStreamingPrelude + "\n\n" + body
+}

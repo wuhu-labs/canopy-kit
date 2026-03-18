@@ -138,34 +138,186 @@ public enum ComponentResolver {
 }
 
 @MainActor
+final class ComponentRuntimeNode {
+  weak var parent: ComponentRuntimeNode?
+
+  let path: NodeID
+  var component: AnyComponent
+
+  private(set) var body: ComponentBody?
+  private(set) var resolvedSubtree: ResolvedNode?
+  private var childComponents: [NodeID: ComponentRuntimeNode] = [:]
+
+  private(set) var dirty = true
+  private(set) var subtreeDirty = true
+
+  init(path: NodeID, component: AnyComponent, parent: ComponentRuntimeNode? = nil) {
+    self.path = path
+    self.component = component
+    self.parent = parent
+  }
+
+  func updateComponent(_ component: AnyComponent) {
+    guard !self.component.isEquivalent(to: component) else { return }
+    self.component = component
+    markDirty()
+  }
+
+  func markDirty() {
+    dirty = true
+    markSubtreeDirty()
+  }
+
+  func refreshIfNeeded(scheduleRefresh: @escaping @Sendable () -> Void) -> Bool {
+    guard subtreeDirty || resolvedSubtree == nil else { return false }
+
+    var didChange = resolvedSubtree == nil
+
+    if dirty || body == nil {
+      let newBody = withObservationTracking {
+        component.body()
+      } onChange: {
+        Task { @MainActor in
+          self.markDirty()
+          scheduleRefresh()
+        }
+      }
+
+      reconcileChildComponents(with: newBody)
+      body = newBody
+      dirty = false
+      didChange = true
+    }
+
+    for child in childComponents.values where child.subtreeDirty || child.resolvedSubtree == nil {
+      if child.refreshIfNeeded(scheduleRefresh: scheduleRefresh) {
+        didChange = true
+      }
+    }
+
+    if didChange, let body {
+      resolvedSubtree = buildResolvedTree(from: body, trail: [])
+    }
+
+    subtreeDirty = false
+    return didChange
+  }
+
+  private func markSubtreeDirty() {
+    guard !subtreeDirty else { return }
+    subtreeDirty = true
+    parent?.markSubtreeDirty()
+  }
+
+  private func reconcileChildComponents(with body: ComponentBody) {
+    let oldChildren = childComponents
+    var newChildren: [NodeID: ComponentRuntimeNode] = [:]
+    collectChildComponents(
+      in: body,
+      trail: [],
+      oldChildren: oldChildren,
+      newChildren: &newChildren
+    )
+    childComponents = newChildren
+  }
+
+  private func collectChildComponents(
+    in body: ComponentBody,
+    trail: NodeID,
+    oldChildren: [NodeID: ComponentRuntimeNode],
+    newChildren: inout [NodeID: ComponentRuntimeNode]
+  ) {
+    switch body {
+    case let .component(key, component):
+      let childPath = path + trail + [key]
+
+      if let existing = oldChildren[childPath], existing.component.isEquivalent(to: component) {
+        existing.parent = self
+        newChildren[childPath] = existing
+      } else {
+        newChildren[childPath] = ComponentRuntimeNode(
+          path: childPath,
+          component: component,
+          parent: self
+        )
+      }
+
+    case let .layout(key, _, children):
+      let nextTrail = trail + [key]
+      for child in children {
+        collectChildComponents(
+          in: child,
+          trail: nextTrail,
+          oldChildren: oldChildren,
+          newChildren: &newChildren
+        )
+      }
+
+    case .drawing:
+      break
+    }
+  }
+
+  private func buildResolvedTree(from body: ComponentBody, trail: NodeID) -> ResolvedNode {
+    switch body {
+    case let .component(key, _):
+      let childPath = path + trail + [key]
+      guard let child = childComponents[childPath], let resolved = child.resolvedSubtree else {
+        preconditionFailure("Missing resolved subtree for child component at path \(childPath)")
+      }
+      return resolved
+
+    case let .layout(key, layout, children):
+      let nextTrail = trail + [key]
+      return ResolvedNode(
+        id: path + nextTrail,
+        localKey: key,
+        content: .layout(
+          layout,
+          children.map { buildResolvedTree(from: $0, trail: nextTrail) }
+        )
+      )
+
+    case let .drawing(key, drawing):
+      let id = path + trail + [key]
+      return ResolvedNode(
+        id: id,
+        localKey: key,
+        content: .drawing(drawing)
+      )
+    }
+  }
+}
+
+@MainActor
 @Observable
 public final class ComponentRenderer {
-  @ObservationIgnored private var root: AnyComponent
   @ObservationIgnored private var refreshScheduled = false
+  @ObservationIgnored private let rootNode: ComponentRuntimeNode
 
   @ObservationIgnored public private(set) var renderRoot: RenderNode
   public private(set) var revision = 0
 
   public init(root: AnyComponent) {
-    self.root = root
-    renderRoot = RenderNode.make(from: ComponentResolver.resolve(root))
+    rootNode = ComponentRuntimeNode(path: [], component: root)
+    let initialResolved = ComponentResolver.resolve(root)
+    renderRoot = RenderNode.make(from: initialResolved)
     refresh()
   }
 
   public func updateRoot(_ root: AnyComponent) {
-    guard !self.root.isEquivalent(to: root) else { return }
-    self.root = root
-    refresh()
+    rootNode.updateComponent(root)
+    scheduleRefresh()
   }
 
   public func refresh() {
-    let resolved = withObservationTracking {
-      ComponentResolver.resolve(root)
-    } onChange: {
+    let didChange = rootNode.refreshIfNeeded { [weak self] in
       Task { @MainActor in
-        self.scheduleRefresh()
+        self?.scheduleRefresh()
       }
     }
+
+    guard didChange, let resolved = rootNode.resolvedSubtree else { return }
 
     renderRoot = RenderNode.reconcile(existing: renderRoot, with: resolved)
     revision &+= 1
