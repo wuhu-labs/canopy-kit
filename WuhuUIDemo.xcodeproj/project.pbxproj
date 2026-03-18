@@ -7,12 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0859C583FE359FD1A11FD9ED /* ComponentDemoViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B25152035175B60DF55A7F5 /* ComponentDemoViews.swift */; };
+		0C931892304B5BE038124E85 /* SampleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0557879C4B3404F4E5D1ED65 /* SampleData.swift */; };
 		5B0C2D2AA45F8F1B59DFE104 /* WuhuUI in Frameworks */ = {isa = PBXBuildFile; productRef = A7B99647693DE1DE4EFFD604 /* WuhuUI */; };
 		BAB21E8FC90FD6ADA70A4556 /* DemoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1CAA44D7DB927A3661DBDD2 /* DemoApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0557879C4B3404F4E5D1ED65 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		2D414BF6CF9F7DD4FB7EEAA7 /* WuhuUIDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WuhuUIDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B25152035175B60DF55A7F5 /* ComponentDemoViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComponentDemoViews.swift; sourceTree = "<group>"; };
 		DF5168D90D3C9A697E90A8AB /* wuhu-ui */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "wuhu-ui"; path = .; sourceTree = SOURCE_ROOT; };
 		F1CAA44D7DB927A3661DBDD2 /* DemoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DemoApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -49,7 +53,9 @@
 		DEA3BA32438600F53146BBA1 /* Demo */ = {
 			isa = PBXGroup;
 			children = (
+				4B25152035175B60DF55A7F5 /* ComponentDemoViews.swift */,
 				F1CAA44D7DB927A3661DBDD2 /* DemoApp.swift */,
+				0557879C4B3404F4E5D1ED65 /* SampleData.swift */,
 			);
 			path = Demo;
 			sourceTree = "<group>";
@@ -120,7 +126,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0859C583FE359FD1A11FD9ED /* ComponentDemoViews.swift in Sources */,
 				BAB21E8FC90FD6ADA70A4556 /* DemoApp.swift in Sources */,
+				0C931892304B5BE038124E85 /* SampleData.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -16,13 +16,11 @@ public struct LayoutSubview {
   }
 }
 
-/// The result of layout: a size for each child and its placement origin.
+/// The result of layout: a placement origin for each child.
 public struct LayoutPlacement {
-  public var size: CGSize
   public var origin: CGPoint
 
-  public init(size: CGSize, origin: CGPoint = .zero) {
-    self.size = size
+  public init(origin: CGPoint = .zero) {
     self.origin = origin
   }
 }
@@ -76,7 +74,7 @@ public struct VStackLayout: Layout {
     for (i, subview) in subviews.enumerated() {
       if i > 0 { y += spacing }
       let childSize = subview.sizeThatFits(proposal: proposal)
-      placements.append(LayoutPlacement(size: childSize, origin: CGPoint(x: 0, y: y)))
+      placements.append(LayoutPlacement(origin: CGPoint(x: 0, y: y)))
       y += childSize.height
     }
 
@@ -105,7 +103,7 @@ public struct HStackLayout: Layout {
       if i > 0 { x += spacing }
       let remaining = max(0, proposal - x)
       let childSize = subview.sizeThatFits(proposal: remaining)
-      placements.append(LayoutPlacement(size: childSize, origin: CGPoint(x: x, y: 0)))
+      placements.append(LayoutPlacement(origin: CGPoint(x: x, y: 0)))
       x += childSize.width
       maxHeight = max(maxHeight, childSize.height)
     }
@@ -140,7 +138,7 @@ public struct InsetLayout: Layout {
 
     let innerWidth = max(0, proposal - left - right)
     let childSize = subview.sizeThatFits(proposal: innerWidth)
-    let placement = LayoutPlacement(size: childSize, origin: CGPoint(x: left, y: top))
+    let placement = LayoutPlacement(origin: CGPoint(x: left, y: top))
     let containerSize = CGSize(
       width: childSize.width + left + right,
       height: childSize.height + top + bottom

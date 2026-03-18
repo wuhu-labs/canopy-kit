@@ -1,4 +1,5 @@
 import CoreGraphics
+import Observation
 import Testing
 @testable import WuhuUI
 
@@ -23,6 +24,51 @@ struct FixedSizeDrawing: CustomDrawing {
 
 func fixedLeaf(width: CGFloat, height: CGFloat) -> RenderNode {
   .leaf(AnyDrawing(FixedSizeDrawing(width: width, height: height)))
+}
+
+func fixedDrawing(width: CGFloat, height: CGFloat) -> AnyDrawing {
+  AnyDrawing(FixedSizeDrawing(width: width, height: height))
+}
+
+struct ChildComponent: Component, Equatable {
+  var key: String
+  var height: CGFloat
+
+  func body() -> ComponentBody {
+    .drawingNode(key: key, fixedDrawing(width: 100, height: height))
+  }
+}
+
+struct ParentComponent: Component, Equatable {
+  func body() -> ComponentBody {
+    .layoutNode(
+      key: "root",
+      AnyLayout(VStackLayout(spacing: 4)),
+      children: [
+        .drawingNode(key: "header", fixedDrawing(width: 100, height: 20)),
+        .componentNode(key: "child", AnyComponent(ChildComponent(key: "body", height: 40))),
+      ]
+    )
+  }
+}
+
+@Observable
+final class ParagraphModel {
+  var count = 2
+}
+
+struct ReactiveParagraphsComponent: Component {
+  var model: ParagraphModel
+
+  func body() -> ComponentBody {
+    .layoutNode(
+      key: "root",
+      AnyLayout(VStackLayout(spacing: 4)),
+      children: (0 ..< model.count).map { index in
+        .drawingNode(key: index, fixedDrawing(width: 100, height: 20))
+      }
+    )
+  }
 }
 
 // MARK: - VStack Tests
@@ -217,5 +263,77 @@ func fixedLeaf(width: CGFloat, height: CGFloat) -> RenderNode {
     // Leaves near the bottom should be found.
     let bottomLeaves = root.visibleLeaves(in: CGRect(x: 0, y: 1200, width: 400, height: 100))
     #expect(bottomLeaves.count > 0)
+  }
+
+  @Test func invalidatingLeafUpdatesRootLayout() {
+    let child = fixedLeaf(width: 100, height: 20)
+    let root = RenderNode.container(AnyLayout(VStackLayout()), [child])
+
+    root.layoutPass(width: 200)
+    #expect(root.frame.height == 20)
+
+    child.content = .leaf(AnyDrawing(FixedSizeDrawing(width: 100, height: 60)))
+    child.invalidateLayout()
+
+    root.layoutPass(width: 200)
+    #expect(root.frame.height == 60)
+    #expect(child.frame.height == 60)
+  }
+
+  @Test func invalidatingNestedLeafUpdatesAncestorLayouts() {
+    let bullet = fixedLeaf(width: 10, height: 14)
+    let body = fixedLeaf(width: 300, height: 28)
+    let hstack = RenderNode.container(AnyLayout(HStackLayout(spacing: 6)), [bullet, body])
+    let inset = RenderNode.container(AnyLayout(InsetLayout(left: 16)), [hstack])
+    let root = RenderNode.container(AnyLayout(VStackLayout(spacing: 4)), [inset])
+
+    root.layoutPass(width: 400)
+    #expect(root.frame.height == 28)
+
+    body.content = .leaf(AnyDrawing(FixedSizeDrawing(width: 300, height: 80)))
+    body.invalidateLayout()
+
+    root.layoutPass(width: 400)
+    #expect(hstack.frame.height == 80)
+    #expect(inset.frame.height == 80)
+    #expect(root.frame.height == 80)
+  }
+}
+
+// MARK: - Component Tests
+
+@Suite struct ComponentResolverTests {
+  @Test func nestedComponentResolvesToPathBackedTree() {
+    let root = ComponentResolver.resolve(AnyComponent(ParentComponent()))
+
+    #expect(root.id == ["root"])
+    #expect(root.children.count == 2)
+    #expect(root.children[0].id == ["root", "header"])
+    #expect(root.children[1].id == ["root", "child", "body"])
+  }
+}
+
+@MainActor
+@Suite struct ComponentRendererTests {
+  @Test func observableChangeRefreshesRenderTree() async {
+    let model = ParagraphModel()
+    let renderer = ComponentRenderer(
+      root: AnyComponent(
+        ReactiveParagraphsComponent(model: model),
+        isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+      )
+    )
+
+    let initialRevision = renderer.revision
+    #expect(renderer.renderRoot.leaves().count == 2)
+
+    model.count = 4
+    for _ in 0 ..< 10 {
+      if renderer.revision > initialRevision { break }
+      await Task.yield()
+    }
+
+    #expect(renderer.revision > initialRevision)
+    #expect(renderer.renderRoot.leaves().count == 4)
   }
 }

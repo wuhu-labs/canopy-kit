@@ -10,7 +10,15 @@ public final class RenderNode {
     case container(AnyLayout, [RenderNode])
   }
 
-  public var content: Content
+  public let nodeID: NodeID?
+
+  public var content: Content {
+    didSet {
+      updateChildParents(from: oldValue, to: content)
+    }
+  }
+
+  weak var parent: RenderNode?
 
   // Layout cache — the last proposal this node was measured with,
   // and the resulting size.
@@ -23,18 +31,24 @@ public final class RenderNode {
   /// Frame in document coordinates, assigned during assignFrames.
   public internal(set) var frame: CGRect = .zero
 
-  public init(_ content: Content) {
+  public init(_ content: Content, nodeID: NodeID? = nil) {
+    self.nodeID = nodeID
     self.content = content
+    updateChildParents(from: nil, to: content)
   }
 
   // MARK: - Convenience constructors
 
-  public static func leaf(_ drawing: AnyDrawing) -> RenderNode {
-    RenderNode(.leaf(drawing))
+  public static func leaf(_ drawing: AnyDrawing, nodeID: NodeID? = nil) -> RenderNode {
+    RenderNode(.leaf(drawing), nodeID: nodeID)
   }
 
-  public static func container(_ layout: AnyLayout, _ children: [RenderNode]) -> RenderNode {
-    RenderNode(.container(layout, children))
+  public static func container(
+    _ layout: AnyLayout,
+    _ children: [RenderNode],
+    nodeID: NodeID? = nil
+  ) -> RenderNode {
+    RenderNode(.container(layout, children), nodeID: nodeID)
   }
 
   // MARK: - Children
@@ -48,17 +62,36 @@ public final class RenderNode {
 
   // MARK: - Cache invalidation
 
-  /// Invalidate this node's cached size.
+  /// Invalidate this node's cached size and all ancestor caches to the root.
   public func invalidateLayout() {
-    cachedSize = nil
-    cachedProposal = nil
+    var node: RenderNode? = self
+
+    while let current = node {
+      current.cachedSize = nil
+      current.cachedProposal = nil
+      node = current.parent
+    }
   }
 
   /// Invalidate this node and all ancestors.
   /// `ancestors` should be the path from root to this node (not including self).
   public static func invalidateUpward(_ ancestors: [RenderNode]) {
-    for node in ancestors {
-      node.invalidateLayout()
+    ancestors.last?.invalidateLayout()
+  }
+
+  private func updateChildParents(from oldContent: Content?, to newContent: Content) {
+    if case let .container(_, oldChildren) = oldContent {
+      for child in oldChildren {
+        if child.parent === self {
+          child.parent = nil
+        }
+      }
+    }
+
+    if case let .container(_, newChildren) = newContent {
+      for child in newChildren {
+        child.parent = self
+      }
     }
   }
 }
@@ -96,6 +129,10 @@ public extension RenderNode {
       }
 
       let result = layout.layout(subviews: subviews, proposal: proposal)
+      precondition(
+        result.placements.count == children.count,
+        "Layout returned \(result.placements.count) placements for \(children.count) children."
+      )
       size = result.size
 
       // Store placements on child nodes.
