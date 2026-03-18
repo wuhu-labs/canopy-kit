@@ -17,19 +17,21 @@ func log(_ msg: String) {
 @MainActor
 final class DocModel {
     var items: [ItemModel] = [
-        ItemModel(color: .red, height: 80),
-        ItemModel(color: .blue, height: 60),
-        ItemModel(color: .green, height: 100),
+        ItemModel(id: "a", color: .red, height: 80),
+        ItemModel(id: "b", color: .blue, height: 60),
+        ItemModel(id: "c", color: .green, height: 100),
     ]
 }
 
 @Observable
 @MainActor
 final class ItemModel {
+    let id: String
     var color: PlatformColor
     var height: CGFloat
 
-    init(color: PlatformColor, height: CGFloat) {
+    init(id: String, color: PlatformColor, height: CGFloat) {
+        self.id = id
         self.color = color
         self.height = height
     }
@@ -37,19 +39,20 @@ final class ItemModel {
 
 // MARK: - Components
 
-/// Root component: reads the model, produces a VStack of color fills.
+/// Root component: reads model.items to produce Item components.
+/// Only observes the items array — NOT individual item properties.
 struct DocRoot: Component, Equatable {
-    // Components are value types and equatable.
-    // They capture what they need from the model as props.
-    // For this demo, the root reads the model directly.
-    let model: ObjectIdentifier  // identity-based equality for the observable
+    let modelID: ObjectIdentifier
 
     @MainActor static var _model: DocModel?
 
     @MainActor func body() -> ContainerElement {
         let model = Self._model!
-        let children = model.items.enumerated().map { i, item in
-            AnyElement(ColorFillElement(color: item.color, height: item.height))
+        log("  ⚙︎ DocRoot.body()")
+        // We read model.items (array identity) but NOT item.color or item.height.
+        // Each Item component will read those independently.
+        let children = model.items.map { item in
+            AnyElement(ComponentElement(Item(modelID: ObjectIdentifier(item))))
         }
         return ContainerElement(
             layout: AnyLayout(VStackLayout(spacing: 8)),
@@ -58,7 +61,26 @@ struct DocRoot: Component, Equatable {
     }
 
     static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.model == rhs.model
+        lhs.modelID == rhs.modelID
+    }
+}
+
+/// Item component: reads directly from its own ItemModel.
+/// When item.color or item.height changes, only THIS component re-renders.
+struct Item: Component, Equatable {
+    let modelID: ObjectIdentifier
+
+    // Static lookup table — in a real framework this would be an environment/context.
+    @MainActor static var _models: [ObjectIdentifier: ItemModel] = [:]
+
+    @MainActor func body() -> ColorFillElement {
+        let model = Self._models[modelID]!
+        log("  ⚙︎ Item.body() [\(model.id)]: color=\(model.color), h=\(model.height)")
+        return ColorFillElement(color: model.color, height: model.height)
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.modelID == rhs.modelID
     }
 }
 
@@ -80,11 +102,14 @@ final class DocumentView: NSView {
         self.wantsLayer = true
         self.layer = backing
 
-        // Set up the component's model reference.
+        // Set up the component model references.
         DocRoot._model = model
+        for item in model.items {
+            Item._models[ObjectIdentifier(item)] = item
+        }
 
         // Build the initial tree.
-        let rootComponent = DocRoot(model: ObjectIdentifier(model))
+        let rootComponent = DocRoot(modelID: ObjectIdentifier(model))
         let rootElement = AnyElement(ComponentElement(rootComponent))
         reconciler.mount(element: rootElement)
 
@@ -113,7 +138,6 @@ final class DocumentView: NSView {
         pendingDirtyPaths.insert(path)
         guard !updateScheduled else { return }
         updateScheduled = true
-        // Batch: collect all dirty paths in this runloop tick, then process.
         DispatchQueue.main.async { [weak self] in
             self?.processDirtyPaths()
         }
@@ -128,10 +152,7 @@ final class DocumentView: NSView {
 
         log("⟳ reconcile: \(paths.map(\.description).sorted())")
 
-        // 1. Reconcile dirty nodes.
         reconciler.transaction(dirtyPaths: paths)
-
-        // 2. Layout.
         relayout()
     }
 
@@ -139,13 +160,8 @@ final class DocumentView: NSView {
         let width = bounds.width
         guard width > 0, let root = reconciler.root else { return }
 
-        // Layout pass.
         LayoutEngine.layout(root, viewportWidth: width)
-
-        // Update container bounds.
         renderer.container.bounds = self.bounds
-
-        // Render (for now, everything is visible — no scrolling).
         renderer.render(root: root, visibleRect: bounds)
     }
 
@@ -154,21 +170,15 @@ final class DocumentView: NSView {
         relayout()
     }
 
-    // MARK: - Hit Testing (wired outside the framework)
-
     override func mouseDown(with event: NSEvent) {
         guard let root = reconciler.root else { return }
 
         let locationInWindow = event.locationInWindow
         let locationInView = convert(locationInWindow, from: nil)
-
-        // Our layout is top-left origin, NSView with isFlipped=true matches.
         let point = CGPoint(x: locationInView.x, y: locationInView.y)
 
         if let hit = HitTest.test(point: point, root: root) {
             log("🎯 hit: \(hit.path) at local(\(Int(hit.localPoint.x)), \(Int(hit.localPoint.y)))")
-
-            // Demonstrate the hit path (root to leaf).
             let path = HitTest.hitPath(point: point, root: root)
             log("   path: \(path.map(\.path.description).joined(separator: " → "))")
         } else {
@@ -177,10 +187,8 @@ final class DocumentView: NSView {
     }
 }
 
-// MARK: - Preference Demo: collect all leaf frames
+// MARK: - Preference Demo
 
-/// A preference key that collects all leaf frames in tree order.
-/// Demonstrates the "mirrored layout tree via preference" idea.
 struct LeafFrameEntry: Equatable {
     var path: NodePath
     var frame: CGRect
@@ -196,11 +204,14 @@ struct LeafFrameKey: PreferenceKey {
 
 @MainActor
 func demoPreferences(root: Node) {
+    // Debug: dump the tree structure.
+    log("🌳 tree structure:")
+    dumpNode(root, indent: 0)
+
     let frames: [LeafFrameEntry] = PreferenceEngine.collect(
         key: LeafFrameKey.self,
         from: root
     ) { node -> [LeafFrameEntry]? in
-        // Only leaves report.
         guard node.children.isEmpty else { return nil }
         return [LeafFrameEntry(path: node.path, frame: node.frame)]
     }
@@ -208,6 +219,24 @@ func demoPreferences(root: Node) {
     log("📐 leaf frames (via preference):")
     for entry in frames {
         log("   \(entry.path): \(Int(entry.frame.origin.x)),\(Int(entry.frame.origin.y)) \(Int(entry.frame.width))×\(Int(entry.frame.height))")
+    }
+}
+
+@MainActor
+func dumpNode(_ node: Node, indent: Int) {
+    let pad = String(repeating: "  ", count: indent)
+    let typeDesc: String
+    if node.element.as(ContainerElement.self) != nil {
+        typeDesc = "Container"
+    } else if node.element.as(ColorFillElement.self) != nil {
+        typeDesc = "ColorFill"
+    } else {
+        typeDesc = "Component"
+    }
+    let f = node.frame
+    log("\(pad)\(node.path) [\(typeDesc)] frame=(\(Int(f.origin.x)),\(Int(f.origin.y)) \(Int(f.width))×\(Int(f.height))) cached=\(node.cachedSize.map { "\(Int($0.width))×\(Int($0.height))" } ?? "nil")")
+    for child in node.children {
+        dumpNode(child, indent: indent + 1)
     }
 }
 
@@ -220,7 +249,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let model = DocModel()
-
         docView = DocumentView(model: model)
 
         let contentView = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 400))
@@ -245,35 +273,44 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.title = "WuhuUI Demo"
         window.makeKeyAndOrderFront(nil)
 
-        // Reactive updates: mutate the model, framework handles the rest.
+        // --- Scenario 1: mutate individual item properties ---
+        // These should dirty only the specific Item component, NOT the root.
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            log("\n→ item[0]: red → orange")
+            log("\n→ item[0].color: red → orange  (should dirty only Item 'a')")
             model.items[0].color = .orange
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            log("\n→ item[1]: height 60 → 150")
+            log("\n→ item[1].height: 60 → 150  (should dirty only Item 'b')")
             model.items[1].height = 150
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) {
-            log("\n→ item[2]: green → purple")
+            log("\n→ item[2].color: green → purple  (should dirty only Item 'c')")
             model.items[2].color = .purple
         }
+
+        // --- Scenario 2: mutate the items array itself ---
+        // This should dirty the root (which reads model.items).
         DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-            log("\n→ item[1]: height 150 → 40")
-            model.items[1].height = 40
+            let newItem = ItemModel(id: "d", color: .gray, height: 50)
+            Item._models[ObjectIdentifier(newItem)] = newItem
+            log("\n→ append item 'd'  (should dirty DocRoot)")
+            model.items.append(newItem)
         }
+
+        // --- Scenario 3: mutate the new item ---
+        // Should dirty only Item 'd'.
         DispatchQueue.main.asyncAfter(deadline: .now() + 7.5) {
-            log("\n→ add new item (gray, height 50)")
-            model.items.append(ItemModel(color: .gray, height: 50))
+            log("\n→ item[3].height: 50 → 90  (should dirty only Item 'd')")
+            model.items[3].height = 90
         }
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 9.0) {
-            // Demonstrate preference collection.
             if let root = self.docView.reconciler.root {
                 demoPreferences(root: root)
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 10.5) {
-            log("\n✓ demo complete — click anywhere to hit-test, or close the window")
+            log("\n✓ demo complete")
         }
     }
 }

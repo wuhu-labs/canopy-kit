@@ -52,6 +52,9 @@ public final class Reconciler {
             // Reconcile this node's subtree.
             let subsumed = reconcileNode(node)
 
+            // Invalidate layout caches up to root — sizes flow bottom-up.
+            invalidateAncestors(of: path, from: root)
+
             // Remove any remaining dirty paths that were subsumed
             // (i.e., they were re-reconciled as part of this node's update).
             remaining.removeAll { candidate in
@@ -84,12 +87,11 @@ public final class Reconciler {
         let node = Node(path: path, element: element)
 
         if let componentBody = expandComponent(element: element, node: node) {
-            // Component node: expand body, build children from body.
+            // Component node: the body becomes a single child node.
+            // The body element (e.g. ContainerElement, ColorFillElement) is itself a node.
             node.expandedBody = componentBody
-            let childElements = resolveChildren(of: componentBody, path: path)
-            node.children = childElements.enumerated().map { i, childElem in
-                buildNode(element: childElem, path: path.appending(i))
-            }
+            let bodyNode = buildNode(element: componentBody, path: path.appending(0))
+            node.children = [bodyNode]
         } else {
             // Container or leaf: build children directly.
             let childElements = resolveChildren(of: element, path: path)
@@ -115,12 +117,11 @@ public final class Reconciler {
             node.expandedBody = newBody
 
             if oldBody != newBody {
-                // Body changed — reconcile children.
-                let newChildElements = resolveChildren(of: newBody, path: node.path)
+                // Body changed — reconcile the single body child.
                 let reconciledPaths = reconcileChildren(
                     parent: node,
                     oldChildren: node.children,
-                    newElements: newChildElements
+                    newElements: [newBody]
                 )
                 subsumed = reconciledPaths
                 node.invalidateLayout()
@@ -225,6 +226,19 @@ public final class Reconciler {
             current = current.children[segment]
         }
         return current
+    }
+
+    /// Invalidate layout caches for all ancestors of the given path.
+    /// Walks from root down to (but not including) the node at `path`,
+    /// clearing cached sizes so the next layout pass re-measures them.
+    private func invalidateAncestors(of path: NodePath, from root: Node) {
+        var current = root
+        current.invalidateLayout()
+        for segment in path.segments {
+            guard segment < current.children.count else { return }
+            current = current.children[segment]
+            current.invalidateLayout()
+        }
     }
 }
 
