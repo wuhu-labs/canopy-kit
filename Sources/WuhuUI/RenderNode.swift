@@ -17,7 +17,10 @@ public final class RenderNode {
   public internal(set) var cachedSize: CGSize?
   public internal(set) var cachedProposal: CGFloat?
 
-  /// Frame in document coordinates, assigned during layout.
+  /// Origin in parent-local coordinates, set by the parent's layout during measure.
+  public internal(set) var localOrigin: CGPoint = .zero
+
+  /// Frame in document coordinates, assigned during assignFrames.
   public internal(set) var frame: CGRect = .zero
 
   public init(_ content: Content) {
@@ -97,7 +100,7 @@ public extension RenderNode {
 
       // Store placements on child nodes.
       for (i, child) in children.enumerated() {
-        child.frame = CGRect(origin: result.placements[i].origin, size: result.placements[i].size)
+        child.localOrigin = result.placements[i].origin
       }
     }
 
@@ -113,8 +116,8 @@ public extension RenderNode {
 
     for child in children {
       let childOrigin = CGPoint(
-        x: origin.x + child.frame.origin.x,
-        y: origin.y + child.frame.origin.y
+        x: origin.x + child.localOrigin.x,
+        y: origin.y + child.localOrigin.y
       )
       child.assignFrames(origin: childOrigin)
     }

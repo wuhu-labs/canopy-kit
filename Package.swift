@@ -17,5 +17,10 @@ let package = Package(
       dependencies: ["WuhuUI"],
       path: "Demo"
     ),
+    .testTarget(
+      name: "WuhuUITests",
+      dependencies: ["WuhuUI"],
+      path: "Tests"
+    ),
   ]
 )
