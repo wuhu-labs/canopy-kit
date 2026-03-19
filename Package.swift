@@ -18,11 +18,6 @@ let package = Package(
       ],
       path: "Sources/WuhuUI"
     ),
-    .executableTarget(
-      name: "WuhuUIDemo",
-      dependencies: ["WuhuUI"],
-      path: "Demo"
-    ),
     .testTarget(
       name: "WuhuUITests",
       dependencies: ["WuhuUI"],

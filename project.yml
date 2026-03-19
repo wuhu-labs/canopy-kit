@@ -1,4 +1,4 @@
-name: WuhuUIDemo
+name: CanopyKitDemo
 options:
   bundleIdPrefix: com.wuhu
   deploymentTarget:
@@ -7,16 +7,19 @@ options:
 settings:
   SWIFT_VERSION: "6.0"
 packages:
-  WuhuUI:
+  CanopyKit:
     path: .
 targets:
-  WuhuUIDemo:
+  CanopyKitDemo:
     type: application
     platform: macOS
     sources:
       - path: Demo
+        excludes:
+          - Package.swift
     dependencies:
-      - package: WuhuUI
+      - package: CanopyKit
+        product: WuhuUI
     settings:
       INFOPLIST_KEY_NSMainStoryboardFile: ""
       INFOPLIST_KEY_NSPrincipalClass: NSApplication
