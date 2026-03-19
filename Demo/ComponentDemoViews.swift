@@ -2,11 +2,11 @@ import Observation
 import SwiftUI
 import WuhuUI
 
-struct DirectRenderTreeDemoView: View {
-  @State private var root = buildMarkdownRenderTree()
-
+struct StaticMarkdownDemoView: View {
   var body: some View {
-    RenderTreeView(root: root)
+    ComponentTreeView(
+      root: AnyComponent(MarkdownDocumentComponent(source: staticMarkdownDocument))
+    )
   }
 }
 

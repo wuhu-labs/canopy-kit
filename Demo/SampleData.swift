@@ -1,30 +1,6 @@
 import CoreGraphics
 import WuhuUI
 
-let headings: [String] = [
-  "Introduction to the System",
-  "Architecture Overview",
-  "Getting Started",
-  "Core Concepts",
-  "Advanced Configuration",
-  "Performance Tuning",
-  "Security Considerations",
-  "Deployment Guide",
-  "Troubleshooting",
-  "API Reference",
-]
-
-let subheadings: [String] = [
-  "Overview",
-  "Prerequisites",
-  "Configuration Options",
-  "Usage Examples",
-  "Common Pitfalls",
-  "Best Practices",
-  "Implementation Details",
-  "Performance Characteristics",
-]
-
 let paragraphs: [String] = [
   "The system is designed around a small set of composable primitives. Each primitive handles exactly one concern, and they combine through well-defined interfaces.",
   "Measurements show that the bottleneck is almost always I/O, not CPU. The layout engine completes a full pass over 10,000 nodes in under 2ms on a single core.",
@@ -42,102 +18,6 @@ let bulletPoints: [String] = [
   "Layout protocol is open for extension",
   "Width proposal flows top-down, size flows bottom-up",
 ]
-
-struct SeededRNG: RandomNumberGenerator {
-  var state: UInt64
-
-  init(seed: UInt64) {
-    state = seed
-  }
-
-  mutating func next() -> UInt64 {
-    state &+= 0x9E37_79B9_7F4A_7C15
-    var z = state
-    z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
-    z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
-    return z ^ (z >> 31)
-  }
-}
-
-enum BlockKind: CaseIterable {
-  case h1
-  case h2
-  case body
-  case bulletList
-  case separator
-}
-
-func buildMarkdownRenderTree(blockCount: Int = 700) -> RenderNode {
-  var rng = SeededRNG(seed: 42)
-  var children: [RenderNode] = []
-
-  func pickBlock(_ index: Int) -> BlockKind {
-    if index % 50 == 0 { return .h1 }
-    if index % 20 == 0 { return .h2 }
-
-    let roll = Int.random(in: 0 ..< 10, using: &rng)
-    switch roll {
-    case 0 ..< 6: return .body
-    case 6 ..< 8: return .bulletList
-    default: return .separator
-    }
-  }
-
-  for index in 0 ..< blockCount {
-    switch pickBlock(index) {
-    case .h1:
-      children.append(renderSpacer(20))
-      children.append(
-        .leaf(
-          AnyDrawing(TextDrawing(headings.randomElement(using: &rng)!, fontSize: 28))
-        )
-      )
-
-    case .h2:
-      children.append(renderSpacer(12))
-      children.append(
-        .leaf(
-          AnyDrawing(TextDrawing(subheadings.randomElement(using: &rng)!, fontSize: 20))
-        )
-      )
-
-    case .body:
-      children.append(
-        .leaf(
-          AnyDrawing(TextDrawing(paragraphs.randomElement(using: &rng)!, fontSize: 14))
-        )
-      )
-
-    case .bulletList:
-      let count = Int.random(in: 3 ... 5, using: &rng)
-      for _ in 0 ..< count {
-        let bullet = RenderNode.leaf(AnyDrawing(TextDrawing("•", fontSize: 14)))
-        let text = RenderNode.leaf(
-          AnyDrawing(TextDrawing(bulletPoints.randomElement(using: &rng)!, fontSize: 14))
-        )
-        let row = RenderNode.container(AnyLayout(HStackLayout(spacing: 6)), [bullet, text])
-        children.append(
-          .container(AnyLayout(InsetLayout(left: 16)), [row])
-        )
-      }
-
-    case .separator:
-      children.append(renderSpacer(8))
-      children.append(
-        .leaf(
-          AnyDrawing(RectDrawing(color: CGColor(gray: 0.8, alpha: 1), height: 1))
-        )
-      )
-      children.append(renderSpacer(8))
-    }
-  }
-
-  return .container(AnyLayout(VStackLayout(spacing: 4)), children)
-}
-
-func renderSpacer(_ height: CGFloat) -> RenderNode {
-  .leaf(AnyDrawing(RectDrawing(color: CGColor(gray: 1, alpha: 0), height: height)))
-}
 
 func demoParagraph(index: Int) -> String {
   paragraphs[index % paragraphs.count]
@@ -179,3 +59,5 @@ func makeStreamingMarkdownDocument(multiplier: Int) -> String {
 
   return markdownStreamingPrelude + "\n\n" + body
 }
+
+let staticMarkdownDocument = markdownStreamingPrelude + "\n\n" + streamingMarkdownChunk(index: 1)

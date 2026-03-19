@@ -11,7 +11,7 @@ struct WuhuUIDemoApp: App {
 }
 
 struct DemoRootView: View {
-  @State private var selection: DemoKind? = .directRenderTree
+  @State private var selection: DemoKind? = .staticMarkdown
 
   var body: some View {
     NavigationSplitView {
@@ -21,9 +21,9 @@ struct DemoRootView: View {
       .navigationTitle("WuhuUI")
     } detail: {
       Group {
-        switch selection ?? .directRenderTree {
-        case .directRenderTree:
-          DirectRenderTreeDemoView()
+        switch selection ?? .staticMarkdown {
+        case .staticMarkdown:
+          StaticMarkdownDemoView()
         case .componentDocument:
           ComponentDocumentDemoView()
         case .reactiveFeed:
@@ -32,13 +32,13 @@ struct DemoRootView: View {
           MarkdownStreamDemoView()
         }
       }
-      .navigationTitle((selection ?? .directRenderTree).title)
+      .navigationTitle((selection ?? .staticMarkdown).title)
     }
   }
 }
 
 enum DemoKind: String, CaseIterable, Identifiable {
-  case directRenderTree
+  case staticMarkdown
   case componentDocument
   case reactiveFeed
   case markdownStream
@@ -47,8 +47,8 @@ enum DemoKind: String, CaseIterable, Identifiable {
 
   var title: String {
     switch self {
-    case .directRenderTree:
-      "Direct Render Tree"
+    case .staticMarkdown:
+      "Static Markdown"
     case .componentDocument:
       "Component Document"
     case .reactiveFeed:
