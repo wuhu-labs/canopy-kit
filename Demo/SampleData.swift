@@ -10,15 +10,6 @@ let paragraphs: [String] = [
   "Accessibility is not an afterthought. Every visual element in the render tree carries semantic metadata that can later feed a platform bridge.",
 ]
 
-let bulletPoints: [String] = [
-  "Supports macOS 14 and later",
-  "CoreText handles text measurement and rendering",
-  "Visible set is recomputed on every scroll event",
-  "Memory scales with viewport size, not document size",
-  "Layout protocol is open for extension",
-  "Width proposal flows top-down, size flows bottom-up",
-]
-
 func demoParagraph(index: Int) -> String {
   paragraphs[index % paragraphs.count]
 }

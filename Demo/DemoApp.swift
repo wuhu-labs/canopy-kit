@@ -24,8 +24,6 @@ struct DemoRootView: View {
         switch selection ?? .staticMarkdown {
         case .staticMarkdown:
           StaticMarkdownDemoView()
-        case .componentDocument:
-          ComponentDocumentDemoView()
         case .reactiveFeed:
           ReactiveFeedDemoView()
         case .markdownStream:
@@ -39,7 +37,6 @@ struct DemoRootView: View {
 
 enum DemoKind: String, CaseIterable, Identifiable {
   case staticMarkdown
-  case componentDocument
   case reactiveFeed
   case markdownStream
 
@@ -49,8 +46,6 @@ enum DemoKind: String, CaseIterable, Identifiable {
     switch self {
     case .staticMarkdown:
       "Static Markdown"
-    case .componentDocument:
-      "Component Document"
     case .reactiveFeed:
       "Reactive Feed"
     case .markdownStream:
