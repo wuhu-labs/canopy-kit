@@ -160,13 +160,17 @@ struct ReactiveFeedDemoView: View {
 @Observable
 final class MarkdownStreamModel {
   @ObservationIgnored private let fullMarkdownCharacters: [Character]
+  @ObservationIgnored private let initialCharacterCount: Int
 
   var visibleMarkdown = ""
   var visibleCharacterCount = 0
   var isStreaming = false
 
-  init(multiplier: Int = 100) {
+  init(multiplier: Int = 100, initialCharacterCount: Int = 22000) {
     fullMarkdownCharacters = Array(makeStreamingMarkdownDocument(multiplier: multiplier))
+    self.initialCharacterCount = min(initialCharacterCount, fullMarkdownCharacters.count)
+    visibleCharacterCount = self.initialCharacterCount
+    visibleMarkdown = String(fullMarkdownCharacters.prefix(self.initialCharacterCount))
   }
 
   var totalCharacterCount: Int {
@@ -188,8 +192,8 @@ final class MarkdownStreamModel {
 
   func reset() {
     pauseStreaming()
-    visibleMarkdown = ""
-    visibleCharacterCount = 0
+    visibleCharacterCount = initialCharacterCount
+    visibleMarkdown = String(fullMarkdownCharacters.prefix(initialCharacterCount))
   }
 
   func advanceOneCharacter() {
@@ -199,8 +203,8 @@ final class MarkdownStreamModel {
       return
     }
 
-    visibleMarkdown.append(fullMarkdownCharacters[visibleCharacterCount])
-    visibleCharacterCount += 1
+    visibleMarkdown.append(contentsOf: fullMarkdownCharacters[visibleCharacterCount..<visibleCharacterCount + 5])
+    visibleCharacterCount += 5
 
     if visibleCharacterCount == totalCharacterCount {
       isStreaming = false
@@ -209,8 +213,22 @@ final class MarkdownStreamModel {
 }
 
 struct MarkdownStreamDemoView: View {
-  @State private var model = MarkdownStreamModel()
-  private let timer = Timer.publish(every: 1 / 60, on: .main, in: .common).autoconnect()
+  @State private var model: MarkdownStreamModel
+  @State private var renderer: ComponentRenderer
+  private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
+
+  init() {
+    let model = MarkdownStreamModel()
+    _model = State(initialValue: model)
+    _renderer = State(
+      initialValue: ComponentRenderer(
+        root: AnyComponent(
+          StreamingMarkdownComponent(model: model),
+          isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+        )
+      )
+    )
+  }
 
   var body: some View {
     VStack(spacing: 12) {
@@ -223,10 +241,8 @@ struct MarkdownStreamDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(MarkdownDocumentComponent(source: model.visibleMarkdown))
-      )
-      .autoScrollWhenHeightChanges()
+      RenderTreeView(root: renderer.renderRoot, revision: renderer.revision)
+        .autoScrollWhenHeightChanges()
     }
     .onReceive(timer) { _ in
       model.advanceOneCharacter()
@@ -245,6 +261,14 @@ struct MarkdownStreamDemoView: View {
   private func resetButtonTapped() {
     model.reset()
     model.startStreaming()
+  }
+}
+
+struct StreamingMarkdownComponent: Component {
+  let model: MarkdownStreamModel
+
+  func body() -> ComponentBody {
+    MarkdownDocumentComponent(source: model.visibleMarkdown).body()
   }
 }
 

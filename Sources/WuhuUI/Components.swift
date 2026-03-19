@@ -346,7 +346,7 @@ public struct ComponentTreeView: View {
 
   public var body: some View {
     RenderTreeView(root: renderer.renderRoot, revision: renderer.revision)
-      .task(id: root.identity) {
+      .onChange(of: root.identity, initial: true) { _, _ in
         renderer.updateRoot(root)
       }
   }
