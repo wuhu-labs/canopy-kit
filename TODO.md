@@ -2,9 +2,11 @@
 
 ## Layout System
 
-- **Two-dimensional proposals.** `measure(proposal:)` takes only width today. Needs `ProposedSize(width:height:)` with optional dimensions so layouts can propose cross-axis sizes.
-- **Layout values.** Per-child key-value metadata on `LayoutSubview` (à la SwiftUI `LayoutValueKey`). Unlocks cross-axis alignment, table cell coordinates, flex grow/shrink, divider/background semantics.
-- **Cross-axis stretch.** HStack/VStack stretch children along the cross axis by default (flexbox `align-items: stretch`). Requires both of the above.
+- ~~**Two-dimensional proposals.** `measure(proposal:)` takes only width today. Needs `ProposedSize(width:height:)` with optional dimensions so layouts can propose cross-axis sizes.~~
+- ~~**Layout values.** Per-child key-value metadata on `LayoutSubview` (à la SwiftUI `LayoutValueKey`). Unlocks cross-axis alignment, table cell coordinates, flex grow/shrink, divider/background semantics.~~
+- **Cross-axis stretch.** HStack/VStack stretch children along the cross axis by default (flexbox `align-items: stretch`). Requires layout values for opt-out.
+- **Alignment.** Cross-axis alignment on VStack (leading/center/trailing) and HStack (top/center/bottom).
+- **SpacerDrawing.** A flexible leaf that expands to fill remaining space, enabling `[Label, Spacer, Value]` row patterns.
 
 ## Rendering Performance
 
