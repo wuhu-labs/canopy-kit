@@ -78,18 +78,33 @@ private func renderBlock(_ markup: Markup, key: String) -> ComponentBody? {
     )
 
   case let blockQuote as BlockQuote:
+    // ZStack: a thin vertical bar (stretched to full height) behind inset content.
     return .layoutNode(
       key: key,
-      AnyLayout(HStackLayout(spacing: 10)),
+      AnyLayout(ZStackLayout()),
       children: [
-        .drawingNode(
-          key: "\(key)-marker",
-          AnyDrawing(TextDrawing("\u{275A}", fontSize: 16))
+        .layoutNode(
+          key: "\(key)-bar",
+          AnyLayout(FrameLayout(width: 3)),
+          children: [
+            .drawingNode(
+              key: "\(key)-bar-rect",
+              AnyDrawing(RectDrawing(color: CGColor(gray: 0.7, alpha: 1), height: 0))
+            ),
+          ]
         ),
         .layoutNode(
-          key: "\(key)-content",
-          AnyLayout(VStackLayout(spacing: 8)),
-          children: renderBlocks(Array(blockQuote.children), keyPrefix: "\(key)-quote")
+          key: "\(key)-content-inset",
+          AnyLayout(InsetLayout(left: 13)),
+          children: [
+            .layoutNode(
+              key: "\(key)-content",
+              AnyLayout(VStackLayout(spacing: 8)),
+              children: renderBlocks(
+                Array(blockQuote.children), keyPrefix: "\(key)-quote"
+              )
+            ),
+          ]
         ),
       ]
     )

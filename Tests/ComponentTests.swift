@@ -148,20 +148,30 @@ struct CountingLeafComponent: Component {
 
     #expect(root.id == ["document"])
 
+    // Block quote is now a ZStack with a bar and inset content.
     let blockQuote = root.children.first { $0.id == ["document", "block-1"] }
     #expect(blockQuote != nil)
+    #expect(blockQuote?.children.count == 2)
 
-    let nestedList = blockQuote?.children.first {
-      $0.id == ["document", "block-1", "block-1-marker"]
+    // First child: the bar (FrameLayout > RectDrawing).
+    let bar = blockQuote?.children.first {
+      $0.id == ["document", "block-1", "block-1-bar"]
     }
-    #expect(nestedList != nil)
+    #expect(bar != nil)
 
-    let quoteContent = blockQuote?.children.first {
-      $0.id == ["document", "block-1", "block-1-content"]
+    // Second child: inset content wrapping a VStack of quote blocks.
+    let contentInset = blockQuote?.children.first {
+      $0.id == ["document", "block-1", "block-1-content-inset"]
+    }
+    #expect(contentInset != nil)
+
+    let quoteContent = contentInset?.children.first {
+      $0.id == ["document", "block-1", "block-1-content-inset", "block-1-content"]
     }
     #expect(quoteContent != nil)
     #expect(quoteContent?.children.count == 2)
 
+    // Second quote child is the nested list.
     let quoteList = quoteContent?.children.last
     #expect(quoteList?.children.count == 2)
   }
