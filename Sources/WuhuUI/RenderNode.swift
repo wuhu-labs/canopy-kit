@@ -23,7 +23,7 @@ public final class RenderNode {
   // Layout cache — the last proposal this node was measured with,
   // and the resulting size.
   public internal(set) var cachedSize: CGSize?
-  public internal(set) var cachedProposal: CGFloat?
+  public internal(set) var cachedProposal: ProposedSize?
 
   /// Origin in parent-local coordinates, set by the parent's layout during measure.
   public internal(set) var localOrigin: CGPoint = .zero
@@ -101,13 +101,13 @@ public final class RenderNode {
 public extension RenderNode {
   /// Full layout pass: measure with the given width, then assign frames.
   func layoutPass(width: CGFloat) {
-    _ = measure(proposal: width)
+    _ = measure(proposal: ProposedSize(width: width, height: nil))
     assignFrames(origin: .zero)
   }
 
-  /// Measure this node given a width proposal. Returns the computed size.
+  /// Measure this node given a size proposal. Returns the computed size.
   /// Uses cache when possible.
-  func measure(proposal: CGFloat) -> CGSize {
+  func measure(proposal: ProposedSize) -> CGSize {
     if let cached = cachedSize, cachedProposal == proposal {
       return cached
     }
@@ -116,12 +116,12 @@ public extension RenderNode {
 
     switch content {
     case var .leaf(drawing):
-      size = drawing.sizeThatFits(width: proposal)
+      size = drawing.sizeThatFits(proposal: proposal)
       // Write back the drawing (it may have mutated its cache).
       content = .leaf(drawing)
 
     case let .container(layout, children):
-      // Create measurable proxies — the layout decides what width each child gets.
+      // Create measurable proxies — the layout decides what proposal each child gets.
       let subviews = children.map { child in
         LayoutSubview { proposal in
           child.measure(proposal: proposal)

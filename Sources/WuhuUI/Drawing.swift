@@ -13,9 +13,9 @@ public protocol CustomDrawing {
   /// created or when its content changes.
   func makeCache() -> Cache
 
-  /// Return the ideal size for the given width constraint.
-  /// The cache (e.g. typesetter) makes repeated calls with different widths cheap.
-  func sizeThatFits(width: CGFloat, cache: inout Cache) -> CGSize
+  /// Return the ideal size for the given proposal.
+  /// The cache (e.g. typesetter) makes repeated calls with different proposals cheap.
+  func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize
 
   /// Draw into the given CGContext at the given rect.
   func draw(in context: CGContext, bounds: CGRect, cache: inout Cache)
@@ -26,7 +26,7 @@ public protocol CustomDrawing {
 /// Type-erased wrapper so RenderNode can hold any CustomDrawing.
 public struct AnyDrawing: @unchecked Sendable {
   private let _makeCache: () -> Any
-  private let _sizeThatFits: (CGFloat, inout Any) -> CGSize
+  private let _sizeThatFits: (ProposedSize, inout Any) -> CGSize
   private let _draw: (CGContext, CGRect, inout Any) -> Void
 
   /// The cache, created lazily.
@@ -34,9 +34,9 @@ public struct AnyDrawing: @unchecked Sendable {
 
   public init<D: CustomDrawing>(_ drawing: D) {
     _makeCache = { drawing.makeCache() as Any }
-    _sizeThatFits = { width, cache in
+    _sizeThatFits = { proposal, cache in
       var typed = cache as! D.Cache
-      let size = drawing.sizeThatFits(width: width, cache: &typed)
+      let size = drawing.sizeThatFits(proposal: proposal, cache: &typed)
       cache = typed
       return size
     }
@@ -55,9 +55,9 @@ public struct AnyDrawing: @unchecked Sendable {
     }
   }
 
-  public mutating func sizeThatFits(width: CGFloat) -> CGSize {
+  public mutating func sizeThatFits(proposal: ProposedSize) -> CGSize {
     ensureCache()
-    return _sizeThatFits(width, &_cache!)
+    return _sizeThatFits(proposal, &_cache!)
   }
 
   public mutating func draw(in context: CGContext, bounds: CGRect) {

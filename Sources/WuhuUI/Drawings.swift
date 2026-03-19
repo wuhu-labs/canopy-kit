@@ -35,7 +35,8 @@ public struct TextDrawing: CustomDrawing {
 
   // MARK: - Size
 
-  public func sizeThatFits(width: CGFloat, cache: inout Cache) -> CGSize {
+  public func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize {
+    let width = proposal.width ?? .greatestFiniteMagnitude
     let length = CFAttributedStringGetLength(attributedString)
     var offset = 0
     var height: CGFloat = 0
@@ -94,14 +95,16 @@ public struct TextDrawing: CustomDrawing {
 
 // MARK: - Rect Drawing
 
-/// A leaf that draws a filled rectangle. Simplest possible renderable.
+/// A leaf that draws a filled rectangle. Fully flexible — accepts whatever
+/// size is proposed, falling back to 10 × 10 for unspecified dimensions
+/// (matching SwiftUI shape convention).
 public struct RectDrawing: CustomDrawing {
   public var color: CGColor
-  public var height: CGFloat
+  public var idealHeight: CGFloat
 
   public init(color: CGColor, height: CGFloat) {
     self.color = color
-    self.height = height
+    idealHeight = height
   }
 
   public struct Cache {}
@@ -110,8 +113,11 @@ public struct RectDrawing: CustomDrawing {
     Cache()
   }
 
-  public func sizeThatFits(width: CGFloat, cache _: inout Cache) -> CGSize {
-    CGSize(width: width, height: height)
+  public func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+    CGSize(
+      width: proposal.width ?? 10,
+      height: proposal.height ?? idealHeight
+    )
   }
 
   public func draw(in context: CGContext, bounds: CGRect, cache _: inout Cache) {

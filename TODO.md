@@ -2,9 +2,15 @@
 
 ## Layout System
 
-- **Two-dimensional proposals.** `measure(proposal:)` takes only width today. Needs `ProposedSize(width:height:)` with optional dimensions so layouts can propose cross-axis sizes.
-- **Layout values.** Per-child key-value metadata on `LayoutSubview` (à la SwiftUI `LayoutValueKey`). Unlocks cross-axis alignment, table cell coordinates, flex grow/shrink, divider/background semantics.
-- **Cross-axis stretch.** HStack/VStack stretch children along the cross axis by default (flexbox `align-items: stretch`). Requires both of the above.
+- ~~**Two-dimensional proposals.** `measure(proposal:)` takes only width today. Needs `ProposedSize(width:height:)` with optional dimensions so layouts can propose cross-axis sizes.~~
+- ~~**Layout values.** Per-child key-value metadata on `LayoutSubview` (à la SwiftUI `LayoutValueKey`). Unlocks cross-axis alignment, table cell coordinates, flex grow/shrink, divider/background semantics.~~
+- ~~**ZStackLayout.** Overlay container.~~
+- ~~**FrameLayout.** Explicit width/height override (like `.frame(width:height:)`).~~
+- **ZStackLayout correctness.** Current implementation re-proposes the union size to children on a second pass. SwiftUI does not do this — it measures once and places with alignment. Flexible children should only stretch if explicitly opted in via layout values, not implicitly via re-proposal.
+- **Background layout.** A content-driven sizing primitive: measure the primary child, then propose that size to the background child. Needed for patterns like blockquote leading bars.
+- **Cross-axis stretch.** HStack/VStack stretch children along the cross axis by default (flexbox `align-items: stretch`). Requires layout values for opt-out.
+- **Alignment.** Cross-axis alignment on VStack (leading/center/trailing) and HStack (top/center/bottom). ZStack alignment.
+- **SpacerDrawing.** A flexible leaf that expands to fill remaining space, enabling `[Label, Spacer, Value]` row patterns.
 
 ## Rendering Performance
 
