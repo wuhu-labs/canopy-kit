@@ -197,70 +197,7 @@ public final class ResolvedNode: Identifiable, @unchecked Sendable {
   }
 }
 
-public enum ComponentResolver {
-  public static func resolve(_ root: AnyComponent) -> ResolvedNode {
-    var context = ResolverContext()
-    return context.resolveRoot(root)
-  }
-}
 
-private struct ResolverContext {
-  var nextID = NodeID.root.rawValue + 1
-
-  mutating func resolveRoot(_ root: AnyComponent) -> ResolvedNode {
-    let child = resolve(node: root.body())
-    return ResolvedNode(
-      id: .root,
-      content: .component(root, child)
-    )
-  }
-
-  mutating func resolve(node: Node) -> ResolvedNode {
-    let id = allocateID()
-    return resolve(node: node, id: id)
-  }
-
-  mutating func resolve(node: Node, id: NodeID) -> ResolvedNode {
-    switch node.content {
-    case let .component(component):
-      let child = resolve(node: component.body())
-      return ResolvedNode(
-        id: id,
-        content: .component(component, child),
-        values: node.values
-      )
-
-    case let .layout(layout, children):
-      let resolvedChildren = IdentifiedArray(
-        uniqueElements: children.map { child in
-          resolve(identifiedNode: child)
-        }
-      )
-      return ResolvedNode(
-        id: id,
-        content: .layout(layout, resolvedChildren),
-        values: node.values
-      )
-
-    case let .primitive(primitive):
-      return ResolvedNode(
-        id: id,
-        content: .primitive(primitive),
-        values: node.values
-      )
-    }
-  }
-
-  mutating func resolve(identifiedNode: IdentifiedNode) -> ResolvedNode {
-    let id = allocateID()
-    return resolve(node: identifiedNode.node, id: id)
-  }
-
-  mutating func allocateID() -> NodeID {
-    defer { nextID += 1 }
-    return NodeID(rawValue: nextID)
-  }
-}
 
 @MainActor
 private struct RuntimeEntry {
@@ -321,7 +258,7 @@ public final class ComponentRenderer {
       )
     ]
     dirtyIDs = [.root]
-    resolvedRoot = ComponentResolver.resolve(root)
+    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.customDrawing(AnyDrawing(PlaceholderDrawing()))))
     refresh()
   }
 
@@ -845,4 +782,15 @@ private func reusePrimitiveNode(
   }
   os_signpost(.event, log: canopyLog, name: "resolvedNodeReused")
   return existing
+}
+
+// MARK: - Placeholder Drawing
+
+/// Zero-size drawing used as a throwaway seed for `ComponentRenderer`
+/// before the first `refresh()` replaces it.
+private struct PlaceholderDrawing: CustomDrawing {
+  struct Cache {}
+  func makeCache() -> Cache { Cache() }
+  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize { .zero }
+  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
 }

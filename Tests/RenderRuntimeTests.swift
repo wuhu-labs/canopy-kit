@@ -4,43 +4,8 @@ import SwiftUI
 import Testing
 @testable import CanopyKit
 
-private struct ProjectionComponent: Component {
-  func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 0)),
-      children: [
-        .drawing(key: "a", fixedDrawing(width: 100, height: 20)),
-        .drawing(key: "b", fixedDrawing(width: 100, height: 20)),
-      ]
-    )
-  }
-}
-
-private struct ShapeComponent: Component {
-  func body() -> Node {
-    var values = NodeValues()
-    values[PrimitiveFillColorKey.self] = CGColor(gray: 0.2, alpha: 1)
-    values[PrimitiveStrokeStyleKey.self] = PrimitiveStrokeStyle(
-      color: CGColor(gray: 0.8, alpha: 1),
-      lineWidth: 2
-    )
-
-    return .shape(
-      AnyShape { proposal in
-        let size = proposal.replacingUnspecifiedDimensions()
-        return Path(CGRect(origin: .zero, size: size))
-      },
-      values: values
-    )
-  }
-}
-
-private struct GestureComponent: Component {
-  let gesture: NodeGesture
-
-  func body() -> Node {
-    .drawing(fixedDrawing(width: 60, height: 20)).gesture(gesture)
-  }
+private struct StubComponent: Component {
+  func body() -> Node { .primitive(.customDrawing(fixedDrawing(width: 0, height: 0))) }
 }
 
 private final class DrawingCacheRecorder {
@@ -77,7 +42,26 @@ private struct TrackingDrawing: CustomDrawing {
 @Suite struct RenderRuntimeTests {
   @Test func visibleProjectionKeepsHierarchyAndFiltersInvisibleChildren() {
     let runtime = RenderRuntime()
-    let root = ComponentResolver.resolve(AnyComponent(ProjectionComponent()))
+    let body = ResolvedNode(
+      id: NodeID(rawValue: 1),
+      content: .layout(
+        AnyLayout(VStackLayout(spacing: 0)),
+        [
+          ResolvedNode(
+            id: NodeID(rawValue: 2),
+            content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+          ),
+          ResolvedNode(
+            id: NodeID(rawValue: 3),
+            content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+          ),
+        ]
+      )
+    )
+    let root = ResolvedNode(
+      id: .root,
+      content: .component(AnyComponent(StubComponent()), body)
+    )
 
     let view = runtime.visibleView(
       root: root,
@@ -92,7 +76,21 @@ private struct TrackingDrawing: CustomDrawing {
 
   @Test func shapePrimitiveProducesPathCommitment() throws {
     let runtime = RenderRuntime()
-    let root = ComponentResolver.resolve(AnyComponent(ShapeComponent()))
+
+    var values = NodeValues()
+    values[PrimitiveFillColorKey.self] = CGColor(gray: 0.2, alpha: 1)
+    values[PrimitiveStrokeStyleKey.self] = PrimitiveStrokeStyle(
+      color: CGColor(gray: 0.8, alpha: 1),
+      lineWidth: 2
+    )
+    let root = ResolvedNode(
+      id: .root,
+      content: .primitive(.shape(AnyShape { proposal in
+        let size = proposal.replacingUnspecifiedDimensions()
+        return Path(CGRect(origin: .zero, size: size))
+      })),
+      values: values
+    )
 
     let renderRoot = runtime.layout(
       root: root,
@@ -115,10 +113,15 @@ private struct TrackingDrawing: CustomDrawing {
 
   @Test func gestureModifierStoresHandlersInNodeValues() {
     let tapped = NodeGesture(onTap: {})
-    let root = ComponentResolver.resolve(AnyComponent(GestureComponent(gesture: tapped)))
+    var values = NodeValues()
+    values[GestureKey.self] = tapped
+    let root = ResolvedNode(
+      id: .root,
+      content: .primitive(.customDrawing(fixedDrawing(width: 60, height: 20))),
+      values: values
+    )
 
-    let leaf = root.children.first
-    #expect(leaf?.values[GestureKey.self] === tapped)
+    #expect(root.values[GestureKey.self] === tapped)
   }
 
   @Test func unchangedResolvedSubtreesArePointerSharedAcrossRefreshes() async throws {

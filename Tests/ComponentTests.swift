@@ -4,27 +4,6 @@ import Observation
 import Testing
 @testable import CanopyKit
 
-struct ChildComponent: Component, Equatable {
-  var key: String
-  var height: CGFloat
-
-  func body() -> Node {
-    .drawing(fixedDrawing(width: 100, height: height))
-  }
-}
-
-struct ParentComponent: Component, Equatable {
-  func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 4)),
-      children: [
-        .drawing(key: "header", fixedDrawing(width: 100, height: 20)),
-        .component(key: "child", AnyComponent(ChildComponent(key: "body", height: 40))),
-      ]
-    )
-  }
-}
-
 @Observable
 final class ParagraphModel {
   var count = 2
@@ -120,41 +99,6 @@ struct CountingLeafComponent: Component {
       fixedDrawing(width: CGFloat(80 + value), height: 20)
     )
   }
-}
-
-@Suite struct ComponentResolverTests {
-  @Test func nestedComponentPreservesComponentBoundary() {
-    let root = ComponentResolver.resolve(AnyComponent(ParentComponent()))
-
-    #expect(root.id == .root)
-
-    guard case let .component(_, rootBody) = root.content else {
-      Issue.record("Expected root component wrapper")
-      return
-    }
-    guard case let .layout(_, children) = rootBody.content else {
-      Issue.record("Expected root body to resolve as a layout")
-      return
-    }
-
-    #expect(children.count == 2)
-    #expect(children[0].id != children[1].id)
-
-    guard case .primitive = children[0].content else {
-      Issue.record("Expected header child to remain a primitive leaf")
-      return
-    }
-
-    guard case let .component(_, childLeaf) = children[1].content else {
-      Issue.record("Expected nested child component wrapper to survive resolution")
-      return
-    }
-    guard case .primitive = childLeaf.content else {
-      Issue.record("Expected nested child component body to remain a primitive leaf")
-      return
-    }
-  }
-
 }
 
 @MainActor
