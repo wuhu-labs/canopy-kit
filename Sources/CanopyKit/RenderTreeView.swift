@@ -122,7 +122,7 @@ private struct VisibleRenderNodeView: View {
       .frame(width: width, height: height, alignment: .topLeading)
 //      .opacity(nodeView.opacity)
 //      .modifier(NodeClipModifier(path: node.values[ClipPathKey.self], size: CGSize(width: width, height: height)))
-//      .modifier(NodeGestureModifier(gesture: node.values[GestureKey.self]))
+      .modifier(NodeGestureModifier(gesture: node.values[GestureKey.self]))
       .offset(
         x: positionsAbsolutely ? nodeView.frame.minX : 0,
         y: positionsAbsolutely ? nodeView.frame.minY : 0
