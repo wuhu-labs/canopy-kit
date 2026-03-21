@@ -30,8 +30,6 @@ struct DemoRootView: View {
           MarkdownStreamDemoView()
         case .tapGesture:
           TapGestureDemoView()
-        case .primitiveShrinkBug:
-          PrimitiveShrinkBugDemoView()
         case .sessionView:
           SessionDemoView()
         }
@@ -46,7 +44,6 @@ enum DemoKind: String, CaseIterable, Identifiable {
   case reactiveFeed
   case markdownStream
   case tapGesture
-  case primitiveShrinkBug
   case sessionView
 
   var id: Self { self }
@@ -61,8 +58,6 @@ enum DemoKind: String, CaseIterable, Identifiable {
       "Markdown Stream"
     case .tapGesture:
       "Tap Gesture"
-    case .primitiveShrinkBug:
-      "Primitive Shrink Bug"
     case .sessionView:
       "Session View"
     }

@@ -37,7 +37,6 @@ public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
     self.boundingRect = boundingRect
     self.values = values
     self.content = content
-    if frame.width == 2 { print("ResolvedRenderNode created: \(id) \(frame)") }
   }
 
   public var children: IdentifiedArrayOf<ResolvedRenderNode> {
@@ -117,7 +116,6 @@ public final class RenderRuntime {
     var commitment: PrimitiveCommitment?
     var lastResolvedNode: ResolvedNode?
     var lastResolvedRenderNode: ResolvedRenderNode?
-    var lastProposal: ProposedSize?
   }
 
   private var cache: [NodeID: CacheEntry] = [:]
@@ -153,25 +151,16 @@ public final class RenderRuntime {
     return size
   }
 
-  public func layout(
-    root: ResolvedNode,
-    proposal: ProposedSize,
-    viewport _: CGRect
-  ) -> ResolvedRenderNode {
-    reconcile(with: root)
-    let signpostID = OSSignpostID(log: canopyLog)
-    os_signpost(.begin, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
-    let result = layout(node: root, proposal: proposal, origin: .zero)
-    os_signpost(.end, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
-    return result
-  }
-
   public func visibleView(
     root: ResolvedNode,
     proposal: ProposedSize,
     viewport: CGRect
   ) -> ResolvedRenderNodeView? {
-    let renderRoot = layout(root: root, proposal: proposal, viewport: viewport)
+    reconcile(with: root)
+    let signpostID = OSSignpostID(log: canopyLog)
+    os_signpost(.begin, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
+    let renderRoot = layout(node: root, proposal: proposal, origin: .zero)
+    os_signpost(.end, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
     return ResolvedRenderNodeView(node: renderRoot, viewport: viewport)
   }
 
@@ -275,7 +264,6 @@ public final class RenderRuntime {
       )
     }
 
-    entry.lastProposal = proposal
     remember(size: size, proposal: proposal, for: node.id, entry: entry)
     return size
   }
@@ -302,10 +290,9 @@ public final class RenderRuntime {
 
     switch node.content {
     case let .component(component, child):
-      let childProposal = cache[child.id]?.lastProposal ?? proposal
       let renderChild = layout(
         node: child,
-        proposal: childProposal,
+        proposal: proposal,
         origin: .zero
       )
       let boundingRect = frame.union(
@@ -329,12 +316,12 @@ public final class RenderRuntime {
         )
       }
       let result = layoutValue.layout(subviews: subviews, proposal: proposal)
+
       let renderChildren = IdentifiedArray(
         uniqueElements: zip(children, result.placements).map { child, placement in
-          let childProposal = cache[child.id]?.lastProposal ?? proposal
           return layout(
             node: child,
-            proposal: childProposal,
+            proposal: placement.proposal,
             origin: placement.origin
           )
         }

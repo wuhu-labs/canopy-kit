@@ -307,6 +307,67 @@ struct MessageComponent: Component {
   private func assistantBody(isStreaming: Bool) -> Node {
     var children: [IdentifiedNode] = []
 
+    // Header
+    if isStreaming {
+      children.append(
+        .drawing(
+          key: "header",
+          AnyDrawing(TextDrawing(
+            attributedString: makeStreamingHeaderAttributedString()
+          ))
+        )
+      )
+    } else {
+      let timestamp = timestampFormatter.string(from: model.timestamp)
+      children.append(
+        .drawing(
+          key: "header",
+          AnyDrawing(TextDrawing(
+            attributedString: makeHeaderAttributedString(
+              author: "Agent",
+              timestamp: timestamp,
+              color: SessionColors.assistantHeaderColor
+            )
+          ))
+        )
+      )
+    }
+
+    // Markdown content
+    if !model.content.isEmpty {
+      children.append(
+        .component(
+          key: "markdown",
+          AnyComponent(RichMarkdownComponent(source: model.content))
+        )
+      )
+    }
+
+    // Streaming cursor
+    if isStreaming {
+      children.append(
+        .drawing(
+          key: "cursor",
+          AnyDrawing(RectDrawing(
+            color: SessionColors.streamingCursorColor,
+            height: 3
+          ))
+        )
+      )
+    }
+
+    // Images
+    for image in model.images {
+      children.append(
+        .component(
+          key: "img-\(image.id)",
+          AnyComponent(ImagePlaceholderComponent(
+            label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
+          ))
+        )
+      )
+    }
+
     // Tool calls — each is its own observable component
     for tc in model.toolCalls {
       children.append(
@@ -317,6 +378,15 @@ struct MessageComponent: Component {
       )
     }
 
+    // Divider (not on streaming messages)
+    if !isStreaming {
+      children.append(
+        .drawing(
+          key: "divider",
+          AnyDrawing(RectDrawing(color: SessionColors.sectionDividerColor, height: 1))
+        )
+      )
+    }
 
     return .layout(
       AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 4)),
