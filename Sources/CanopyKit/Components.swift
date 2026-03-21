@@ -133,51 +133,24 @@ public extension IdentifiedNode {
 }
 
 public struct AnyComponent: @unchecked Sendable {
-  private let box: any AnyComponentBox
+  private let value: any Component
 
   public init<C: Component>(_ component: C) {
-    self.init(component, isEquivalent: defaultValueIsEquivalent)
-  }
-
-  public init<C: Component>(_ component: C, isEquivalent: @escaping @Sendable (C, C) -> Bool) {
-    box = ComponentBox(component: component, isEquivalent: isEquivalent)
+    value = component
   }
 
   public func body() -> Node {
-    box.body()
+    value.body()
   }
 
-  public func isEquivalent(to other: AnyComponent) -> Bool {
-    box.isEquivalent(to: other.box)
-  }
-
-  var identity: ObjectIdentifier {
-    ObjectIdentifier(box)
+  func isEquivalent(to other: AnyComponent) -> Bool {
+    compareComponent(lhs: value, rhs: other.value)
   }
 }
 
-private protocol AnyComponentBox: AnyObject {
-  func body() -> Node
-  func isEquivalent(to other: any AnyComponentBox) -> Bool
-}
-
-private final class ComponentBox<C: Component>: AnyComponentBox, @unchecked Sendable {
-  let component: C
-  let isEquivalentClosure: @Sendable (C, C) -> Bool
-
-  init(component: C, isEquivalent: @escaping @Sendable (C, C) -> Bool) {
-    self.component = component
-    isEquivalentClosure = isEquivalent
-  }
-
-  func body() -> Node {
-    component.body()
-  }
-
-  func isEquivalent(to other: any AnyComponentBox) -> Bool {
-    guard let other = other as? ComponentBox<C> else { return false }
-    return isEquivalentClosure(component, other.component)
-  }
+private func compareComponent<C: Component>(lhs: C, rhs: any Component) -> Bool {
+  guard let rhs = rhs as? C else { return false }
+  return defaultValueIsEquivalent(lhs, rhs)
 }
 
 public final class ResolvedNode: Identifiable, @unchecked Sendable {
@@ -657,10 +630,8 @@ public struct ComponentTreeView: View {
   }
 
   public var body: some View {
-    RenderTreeView(root: renderer.resolvedRoot, revision: renderer.revision)
-      .onChange(of: root.identity, initial: true) { _, _ in
-        renderer.updateRoot(root)
-      }
+    renderer.updateRoot(root)
+    return RenderTreeView(root: renderer.resolvedRoot, revision: renderer.revision)
   }
 }
 

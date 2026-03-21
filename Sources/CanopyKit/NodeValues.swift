@@ -77,7 +77,7 @@ public struct NodeValues: @unchecked Sendable {
     }
   }
 
-  public func isEquivalent(to other: NodeValues) -> Bool {
+  func isEquivalent(to other: NodeValues) -> Bool {
     guard storage.count == other.storage.count else { return false }
 
     for (key, value) in storage {

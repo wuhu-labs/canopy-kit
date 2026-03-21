@@ -52,19 +52,13 @@ struct CountingRootComponent: Component {
         .component(
           key: "left",
           AnyComponent(
-            CountingLeafComponent(side: .left, model: model, counter: counter),
-            isEquivalent: { lhs, rhs in
-              lhs.side == rhs.side && lhs.model === rhs.model && lhs.counter === rhs.counter
-            }
+            CountingLeafComponent(side: .left, model: model, counter: counter)
           )
         ),
         .component(
           key: "right",
           AnyComponent(
-            CountingLeafComponent(side: .right, model: model, counter: counter),
-            isEquivalent: { lhs, rhs in
-              lhs.side == rhs.side && lhs.model === rhs.model && lhs.counter === rhs.counter
-            }
+            CountingLeafComponent(side: .right, model: model, counter: counter)
           )
         ),
       ]
@@ -108,8 +102,7 @@ struct CountingLeafComponent: Component {
     let runtime = RenderRuntime()
     let renderer = ComponentRenderer(
       root: AnyComponent(
-        ReactiveParagraphsComponent(model: model),
-        isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+        ReactiveParagraphsComponent(model: model)
       )
     )
 
@@ -141,10 +134,7 @@ struct CountingLeafComponent: Component {
     let counter = RenderCounter()
     let renderer = ComponentRenderer(
       root: AnyComponent(
-        CountingRootComponent(model: model, counter: counter),
-        isEquivalent: { lhs, rhs in
-          lhs.model === rhs.model && lhs.counter === rhs.counter
-        }
+        CountingRootComponent(model: model, counter: counter)
       )
     )
 
