@@ -85,10 +85,7 @@ private struct TrackingDrawing: CustomDrawing {
     )
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.shape(AnyShape { proposal in
-        let size = proposal.replacingUnspecifiedDimensions()
-        return Path(CGRect(origin: .zero, size: size))
-      })),
+      content: .primitive(.shape(AnyShape(Rectangle()))),
       values: values
     )
 

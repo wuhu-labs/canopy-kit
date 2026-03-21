@@ -2,6 +2,7 @@ import CanopyKit
 import CoreGraphics
 import IdentifiedCollections
 import Markdown
+import SwiftUI
 
 // MARK: - Document Component
 
@@ -67,7 +68,16 @@ struct CodeBlockComponent: Component, Equatable {
 
 struct ThematicBreakComponent: Component, Equatable {
   func body() -> Node {
-    .primitive(.customDrawing(AnyDrawing(RectDrawing(color: CGColor(gray: 0.8, alpha: 1), height: 1))))
+    .layout(
+      AnyLayout(FrameLayout(height: 1)),
+      children: [
+        .shape(
+          key: "shape",
+          AnyShape(Rectangle())
+        )
+        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.8, alpha: 1)),
+      ]
+    )
   }
 }
 
@@ -82,10 +92,11 @@ struct BlockQuoteComponent: Component, Equatable {
           key: "bar",
           AnyLayout(FrameLayout(width: 3)),
           children: [
-            .drawing(
+            .shape(
               key: "rect",
-              AnyDrawing(RectDrawing(color: CGColor(gray: 0.7, alpha: 1), height: 0))
-            ),
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.7, alpha: 1)),
           ]
         ),
         .layout(

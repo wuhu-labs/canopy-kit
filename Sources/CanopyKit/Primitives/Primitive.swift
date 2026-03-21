@@ -21,17 +21,18 @@ public extension CustomDrawing {
 // MARK: - Shapes
 
 public protocol ShapePrimitive {
-  func path(proposal: ProposedSize) -> Path
+  func path(in rect: CGRect) -> Path
 }
 
 public extension ShapePrimitive {
   func sizeThatFits(proposal: ProposedSize) -> CGSize {
-    let fallback = proposal.replacingUnspecifiedDimensions()
-    let boundingRect = path(proposal: proposal).boundingRect
+    let size = proposal.replacingUnspecifiedDimensions()
+    let rect = CGRect(origin: .zero, size: size)
+    let boundingRect = path(in: rect).boundingRect
 
     return CGSize(
-      width: max(boundingRect.width, proposal.width ?? fallback.width),
-      height: max(boundingRect.height, proposal.height ?? fallback.height)
+      width: max(boundingRect.width, proposal.width ?? size.width),
+      height: max(boundingRect.height, proposal.height ?? size.height)
     )
   }
 }
@@ -50,12 +51,8 @@ public struct AnyShape: @unchecked Sendable {
     box = ShapeBox(shape: shape, isEquivalentClosure: isEquivalent)
   }
 
-  public init(_ path: @escaping @Sendable (ProposedSize) -> Path) {
-    self.init(ClosureShape(path: path))
-  }
-
-  public func path(proposal: ProposedSize) -> Path {
-    box.path(proposal: proposal)
+  public func path(in rect: CGRect) -> Path {
+    box.path(in: rect)
   }
 
   public func sizeThatFits(proposal: ProposedSize) -> CGSize {
@@ -68,7 +65,7 @@ public struct AnyShape: @unchecked Sendable {
 }
 
 private protocol AnyShapeBox {
-  func path(proposal: ProposedSize) -> Path
+  func path(in rect: CGRect) -> Path
   func sizeThatFits(proposal: ProposedSize) -> CGSize
   func isEquivalent(to other: any AnyShapeBox) -> Bool
 }
@@ -77,8 +74,8 @@ private struct ShapeBox<S: ShapePrimitive>: AnyShapeBox, @unchecked Sendable {
   let shape: S
   let isEquivalentClosure: @Sendable (S, S) -> Bool
 
-  func path(proposal: ProposedSize) -> Path {
-    shape.path(proposal: proposal)
+  func path(in rect: CGRect) -> Path {
+    shape.path(in: rect)
   }
 
   func sizeThatFits(proposal: ProposedSize) -> CGSize {
@@ -88,18 +85,6 @@ private struct ShapeBox<S: ShapePrimitive>: AnyShapeBox, @unchecked Sendable {
   func isEquivalent(to other: any AnyShapeBox) -> Bool {
     guard let other = other as? Self else { return false }
     return isEquivalentClosure(shape, other.shape)
-  }
-}
-
-private struct ClosureShape: ShapePrimitive {
-  let pathBuilder: @Sendable (ProposedSize) -> Path
-
-  init(path: @escaping @Sendable (ProposedSize) -> Path) {
-    pathBuilder = path
-  }
-
-  func path(proposal: ProposedSize) -> Path {
-    pathBuilder(proposal)
   }
 }
 

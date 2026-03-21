@@ -5,6 +5,7 @@ import Foundation
 import IdentifiedCollections
 import Markdown
 import Observation
+import SwiftUI
 
 #if canImport(AppKit)
 import AppKit
@@ -257,13 +258,11 @@ struct MessageComponent: Component {
           key: "bubble",
           AnyLayout(ZStackLayout()),
           children: [
-            .drawing(
+            .shape(
               key: "bg",
-              AnyDrawing(RectDrawing(
-                color: SessionColors.userBubbleBackground,
-                height: 0
-              ))
-            ),
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, SessionColors.userBubbleBackground),
             .layout(
               key: "text-inset",
               AnyLayout(InsetLayout(left: 10, top: 8, right: 10, bottom: 8)),
@@ -347,12 +346,16 @@ struct MessageComponent: Component {
     // Streaming cursor
     if isStreaming {
       children.append(
-        .drawing(
+        .layout(
           key: "cursor",
-          AnyDrawing(RectDrawing(
-            color: SessionColors.streamingCursorColor,
-            height: 3
-          ))
+          AnyLayout(FrameLayout(height: 3)),
+          children: [
+            .shape(
+              key: "shape",
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, SessionColors.streamingCursorColor),
+          ]
         )
       )
     }
@@ -382,9 +385,16 @@ struct MessageComponent: Component {
     // Divider (not on streaming messages)
     if !isStreaming {
       children.append(
-        .drawing(
+        .layout(
           key: "divider",
-          AnyDrawing(RectDrawing(color: SessionColors.sectionDividerColor, height: 1))
+          AnyLayout(FrameLayout(height: 1)),
+          children: [
+            .shape(
+              key: "shape",
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, SessionColors.sectionDividerColor),
+          ]
         )
       )
     }
@@ -454,10 +464,11 @@ struct ToolCallComponent: Component {
           key: "result-bg",
           AnyLayout(ZStackLayout()),
           children: [
-            .drawing(
+            .shape(
               key: "bg",
-              AnyDrawing(RectDrawing(color: SessionColors.toolCallBackground, height: 0))
-            ),
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, SessionColors.toolCallBackground),
             .layout(
               key: "result-inset",
               AnyLayout(InsetLayout(left: 8, top: 6, right: 8, bottom: 6)),
@@ -488,10 +499,11 @@ struct ToolCallComponent: Component {
           key: "bar",
           AnyLayout(FrameLayout(width: 2)),
           children: [
-            .drawing(
+            .shape(
               key: "bar-rect",
-              AnyDrawing(RectDrawing(color: SessionColors.toolCallBorder, height: 0))
-            ),
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, SessionColors.toolCallBorder),
           ]
         ),
         // Content
@@ -523,9 +535,16 @@ struct ImagePlaceholderComponent: Component, Equatable {
     .layout(
       AnyLayout(ZStackLayout()),
       children: [
-        .drawing(
+        .layout(
           key: "bg",
-          AnyDrawing(RectDrawing(color: SessionColors.imagePlaceholderColor, height: 60))
+          AnyLayout(FrameLayout(height: 60)),
+          children: [
+            .shape(
+              key: "shape",
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, SessionColors.imagePlaceholderColor),
+          ]
         ),
         .layout(
           key: "label-inset",
@@ -604,9 +623,16 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     )
 
   case _ as ThematicBreak:
-    return .drawing(
+    return .layout(
       key: key,
-      AnyDrawing(RectDrawing(color: CGColor(gray: 0.8, alpha: 1), height: 1))
+      AnyLayout(FrameLayout(height: 1)),
+      children: [
+        .shape(
+          key: "shape",
+          AnyShape(Rectangle())
+        )
+        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.8, alpha: 1)),
+      ]
     )
 
   case let blockQuote as BlockQuote:
@@ -623,10 +649,11 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
           key: "bar",
           AnyLayout(FrameLayout(width: 3)),
           children: [
-            .drawing(
+            .shape(
               key: "rect",
-              AnyDrawing(RectDrawing(color: CGColor(gray: 0.7, alpha: 1), height: 0))
-            ),
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.7, alpha: 1)),
           ]
         ),
         .layout(
@@ -756,10 +783,11 @@ struct RichCodeBlockComponent: Component, Equatable {
     return .layout(
       AnyLayout(ZStackLayout()),
       children: [
-        .drawing(
+        .shape(
           key: "bg",
-          AnyDrawing(RectDrawing(color: CGColor(gray: 0.95, alpha: 1), height: 0))
-        ),
+          AnyShape(Rectangle())
+        )
+        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.95, alpha: 1)),
         .layout(
           key: "inset",
           AnyLayout(InsetLayout(left: 12, top: 8, right: 12, bottom: 8)),

@@ -402,7 +402,7 @@ public final class RenderRuntime {
     switch primitive {
     case let .shape(shape):
       let commitment = PrimitiveCommitment.path(
-        shape.path(proposal: ProposedSize(width: size.width, height: size.height))
+        shape.path(in: CGRect(origin: .zero, size: size))
       )
       entry.commitment = commitment
       return commitment
