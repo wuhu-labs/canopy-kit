@@ -26,18 +26,41 @@ public struct TextDrawing: CustomDrawing {
   // MARK: - Cache
 
   public struct Cache {
+    var layoutAttributedString: NSAttributedString
+    var drawingAttributedString: NSAttributedString
     var typesetter: CTTypesetter
   }
 
   public func makeCache() -> Cache {
-    Cache(typesetter: CTTypesetterCreateWithAttributedString(attributedString))
+    let drawingAttributedString = attributedString as NSAttributedString
+    let layoutAttributedString = Self.layoutAttributedString(from: drawingAttributedString)
+    return Cache(
+      layoutAttributedString: layoutAttributedString,
+      drawingAttributedString: drawingAttributedString,
+      typesetter: CTTypesetterCreateWithAttributedString(layoutAttributedString)
+    )
+  }
+
+  public func updateCache(_ cache: inout Cache) {
+    let drawingAttributedString = attributedString as NSAttributedString
+    let layoutAttributedString = Self.layoutAttributedString(from: drawingAttributedString)
+
+    if cache.layoutAttributedString.isEqual(to: layoutAttributedString) {
+      cache.drawingAttributedString = drawingAttributedString
+    } else {
+      cache = Cache(
+        layoutAttributedString: layoutAttributedString,
+        drawingAttributedString: drawingAttributedString,
+        typesetter: CTTypesetterCreateWithAttributedString(layoutAttributedString)
+      )
+    }
   }
 
   // MARK: - Size
 
   public func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize {
     let width = proposal.width ?? .greatestFiniteMagnitude
-    let length = CFAttributedStringGetLength(attributedString)
+    let length = cache.layoutAttributedString.length
     var offset = 0
     var height: CGFloat = 0
     var maxLineWidth: CGFloat = 0
@@ -62,7 +85,7 @@ public struct TextDrawing: CustomDrawing {
   // MARK: - Draw
 
   public func draw(in context: CGContext, bounds: CGRect, cache: inout Cache) {
-    let length = CFAttributedStringGetLength(attributedString)
+    let length = cache.drawingAttributedString.length
     var offset = 0
     // CoreText draws with origin at bottom-left. We work top-down.
     // Flip the context.
@@ -74,7 +97,11 @@ public struct TextDrawing: CustomDrawing {
 
     while offset < length {
       let count = CTTypesetterSuggestLineBreak(cache.typesetter, offset, Double(bounds.width))
-      let line = CTTypesetterCreateLine(cache.typesetter, CFRange(location: offset, length: count))
+      let line = CTLineCreateWithAttributedString(
+        cache.drawingAttributedString.attributedSubstring(
+          from: NSRange(location: offset, length: count)
+        )
+      )
 
       var ascent: CGFloat = 0
       var descent: CGFloat = 0
@@ -90,6 +117,18 @@ public struct TextDrawing: CustomDrawing {
     }
 
     context.restoreGState()
+  }
+
+  private static func layoutAttributedString(from attributedString: NSAttributedString) -> NSAttributedString {
+    let normalized = NSMutableAttributedString(attributedString: attributedString)
+    normalized.enumerateAttribute(
+      .foregroundColor,
+      in: NSRange(location: 0, length: normalized.length)
+    ) { value, range, _ in
+      guard value != nil else { return }
+      normalized.removeAttribute(.foregroundColor, range: range)
+    }
+    return normalized
   }
 }
 

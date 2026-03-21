@@ -8,12 +8,14 @@ let package = Package(
     .library(name: "WuhuUI", targets: ["WuhuUI"]),
   ],
   dependencies: [
+    .package(url: "https://github.com/pointfreeco/swift-identified-collections", from: "1.0.0"),
     .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.7.3"),
   ],
   targets: [
     .target(
       name: "WuhuUI",
       dependencies: [
+        .product(name: "IdentifiedCollections", package: "swift-identified-collections"),
         .product(name: "Markdown", package: "swift-markdown"),
       ],
       path: "Sources/WuhuUI"

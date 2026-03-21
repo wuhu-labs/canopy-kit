@@ -1,48 +1,137 @@
+import IdentifiedCollections
 import Observation
+import os.log
 import SwiftUI
 
-public typealias NodeID = [AnyHashable]
+public struct NodeID: Hashable, Sendable, Comparable {
+  public let rawValue: Int
+
+  public init(rawValue: Int) {
+    self.rawValue = rawValue
+  }
+
+  public static let root = NodeID(rawValue: 0)
+
+  public static func < (lhs: Self, rhs: Self) -> Bool {
+    lhs.rawValue < rhs.rawValue
+  }
+}
 
 public protocol Component {
-  func body() -> ComponentBody
+  func body() -> Node
 }
 
-public enum ComponentBody {
-  case component(key: AnyHashable, AnyComponent)
-  case layout(key: AnyHashable, layout: AnyLayout, children: [ComponentBody])
-  case drawing(key: AnyHashable, drawing: AnyDrawing)
+public struct Node: @unchecked Sendable {
+  public var content: NodeContent
+  public var values: NodeValues
+
+  public init(content: NodeContent, values: NodeValues = NodeValues()) {
+    self.content = content
+    self.values = values
+  }
 }
 
-public extension ComponentBody {
-  static func componentNode(key: some Hashable, _ component: AnyComponent) -> Self {
-    .component(key: AnyHashable(key), component)
+public enum NodeContent: @unchecked Sendable {
+  case component(AnyComponent)
+  case layout(AnyLayout, IdentifiedArrayOf<IdentifiedNode>)
+  case primitive(Primitive)
+}
+
+public struct IdentifiedNode: Identifiable, @unchecked Sendable {
+  public var id: AnyHashable
+  public var node: Node
+
+  public init(id: AnyHashable, node: Node) {
+    self.id = id
+    self.node = node
   }
 
-  static func layoutNode(
+  public init(id: some Hashable, node: Node) {
+    self.init(id: AnyHashable(id), node: node)
+  }
+}
+
+public extension Node {
+  static func component(_ component: AnyComponent, values: NodeValues = NodeValues()) -> Self {
+    Self(content: .component(component), values: values)
+  }
+
+  static func layout(
+    _ layout: AnyLayout,
+    children: IdentifiedArrayOf<IdentifiedNode>,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(content: .layout(layout, children), values: values)
+  }
+
+  static func primitive(_ primitive: Primitive, values: NodeValues = NodeValues()) -> Self {
+    Self(content: .primitive(primitive), values: values)
+  }
+
+  static func drawing(_ drawing: AnyDrawing, values: NodeValues = NodeValues()) -> Self {
+    primitive(.customDrawing(drawing), values: values)
+  }
+
+  static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
+    primitive(.shape(shape), values: values)
+  }
+}
+
+public extension IdentifiedNode {
+  static func component(
+    key: some Hashable,
+    _ component: AnyComponent,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .component(component, values: values))
+  }
+
+  static func layout(
     key: some Hashable,
     _ layout: AnyLayout,
-    children: [ComponentBody]
+    children: IdentifiedArrayOf<IdentifiedNode>,
+    values: NodeValues = NodeValues()
   ) -> Self {
-    .layout(key: AnyHashable(key), layout: layout, children: children)
+    Self(id: key, node: .layout(layout, children: children, values: values))
   }
 
-  static func drawingNode(key: some Hashable, _ drawing: AnyDrawing) -> Self {
-    .drawing(key: AnyHashable(key), drawing: drawing)
+  static func primitive(
+    key: some Hashable,
+    _ primitive: Primitive,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .primitive(primitive, values: values))
+  }
+
+  static func drawing(
+    key: some Hashable,
+    _ drawing: AnyDrawing,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .drawing(drawing, values: values))
+  }
+
+  static func shape(
+    key: some Hashable,
+    _ shape: AnyShape,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .shape(shape, values: values))
   }
 }
 
-public struct AnyComponent {
+public struct AnyComponent: @unchecked Sendable {
   private let box: any AnyComponentBox
 
-  public init<C: Component & Equatable>(_ component: C) {
-    self.init(component) { $0 == $1 }
+  public init<C: Component>(_ component: C) {
+    self.init(component, isEquivalent: defaultValueIsEquivalent)
   }
 
-  public init<C: Component>(_ component: C, isEquivalent: @escaping (C, C) -> Bool) {
+  public init<C: Component>(_ component: C, isEquivalent: @escaping @Sendable (C, C) -> Bool) {
     box = ComponentBox(component: component, isEquivalent: isEquivalent)
   }
 
-  public func body() -> ComponentBody {
+  public func body() -> Node {
     box.body()
   }
 
@@ -56,271 +145,282 @@ public struct AnyComponent {
 }
 
 private protocol AnyComponentBox: AnyObject {
-  func body() -> ComponentBody
+  func body() -> Node
   func isEquivalent(to other: any AnyComponentBox) -> Bool
 }
 
-private final class ComponentBox<C: Component>: AnyComponentBox {
+private final class ComponentBox<C: Component>: AnyComponentBox, @unchecked Sendable {
   let component: C
-  let isEquivalent: (C, C) -> Bool
+  let isEquivalentClosure: @Sendable (C, C) -> Bool
 
-  init(component: C, isEquivalent: @escaping (C, C) -> Bool) {
+  init(component: C, isEquivalent: @escaping @Sendable (C, C) -> Bool) {
     self.component = component
-    self.isEquivalent = isEquivalent
+    isEquivalentClosure = isEquivalent
   }
 
-  func body() -> ComponentBody {
+  func body() -> Node {
     component.body()
   }
 
   func isEquivalent(to other: any AnyComponentBox) -> Bool {
     guard let other = other as? ComponentBox<C> else { return false }
-    return isEquivalent(component, other.component)
+    return isEquivalentClosure(component, other.component)
   }
 }
 
-public final class ResolvedNode {
-  public enum Content {
-    case layout(AnyLayout, [ResolvedNode])
-    case drawing(AnyDrawing)
+public final class ResolvedNode: Identifiable, @unchecked Sendable {
+  public enum Content: @unchecked Sendable {
+    case component(AnyComponent, ResolvedNode)
+    case layout(AnyLayout, IdentifiedArrayOf<ResolvedNode>)
+    case primitive(Primitive)
   }
 
   public let id: NodeID
-  public let localKey: AnyHashable
   public let content: Content
+  public let values: NodeValues
 
-  public init(id: NodeID, localKey: AnyHashable, content: Content) {
+  public init(id: NodeID, content: Content, values: NodeValues = NodeValues()) {
     self.id = id
-    self.localKey = localKey
     self.content = content
+    self.values = values
   }
 
-  public var children: [ResolvedNode] {
+  public var children: IdentifiedArrayOf<ResolvedNode> {
     switch content {
-    case .drawing:
-      []
+    case let .component(_, child):
+      [child]
     case let .layout(_, children):
       children
+    case .primitive:
+      []
     }
   }
 }
 
 public enum ComponentResolver {
   public static func resolve(_ root: AnyComponent) -> ResolvedNode {
-    resolve(root.body(), path: [])
+    var context = ResolverContext()
+    return context.resolveRoot(root)
+  }
+}
+
+private struct ResolverContext {
+  var nextID = NodeID.root.rawValue + 1
+
+  mutating func resolveRoot(_ root: AnyComponent) -> ResolvedNode {
+    let child = resolve(node: root.body())
+    return ResolvedNode(
+      id: .root,
+      content: .component(root, child)
+    )
   }
 
-  public static func resolve(_ body: ComponentBody, path: NodeID) -> ResolvedNode {
-    switch body {
-    case let .component(key, component):
-      return resolve(component.body(), path: path + [key])
+  mutating func resolve(node: Node) -> ResolvedNode {
+    let id = allocateID()
+    return resolve(node: node, id: id)
+  }
 
-    case let .layout(key, layout, children):
-      let id = path + [key]
-      let resolvedChildren = children.map { child in
-        resolve(child, path: id)
-      }
+  mutating func resolve(node: Node, id: NodeID) -> ResolvedNode {
+    switch node.content {
+    case let .component(component):
+      let child = resolve(node: component.body())
       return ResolvedNode(
         id: id,
-        localKey: key,
-        content: .layout(layout, resolvedChildren)
+        content: .component(component, child),
+        values: node.values
       )
 
-    case let .drawing(key, drawing):
-      let id = path + [key]
+    case let .layout(layout, children):
+      let resolvedChildren = IdentifiedArray(
+        uniqueElements: children.map { child in
+          resolve(identifiedNode: child)
+        }
+      )
       return ResolvedNode(
         id: id,
-        localKey: key,
-        content: .drawing(drawing)
+        content: .layout(layout, resolvedChildren),
+        values: node.values
+      )
+
+    case let .primitive(primitive):
+      return ResolvedNode(
+        id: id,
+        content: .primitive(primitive),
+        values: node.values
       )
     }
+  }
+
+  mutating func resolve(identifiedNode: IdentifiedNode) -> ResolvedNode {
+    let id = allocateID()
+    return resolve(node: identifiedNode.node, id: id)
+  }
+
+  mutating func allocateID() -> NodeID {
+    defer { nextID += 1 }
+    return NodeID(rawValue: nextID)
   }
 }
 
 @MainActor
-final class ComponentRuntimeNode {
-  weak var parent: ComponentRuntimeNode?
+private struct RuntimeEntry {
+  let id: NodeID
+  let parentID: NodeID?
+  let depth: Int
 
-  let path: NodeID
   var component: AnyComponent
+  var values: NodeValues
+  var body: Node?
+  var resolvedNode: ResolvedNode?
+  var childComponents: [DeclarationPath: NodeID] = [:]
+  var localNodes: [DeclarationPath: LocalNodeIdentity] = [:]
+  var localResolvedNodes: [DeclarationPath: ResolvedNode] = [:]
+}
 
-  private(set) var body: ComponentBody?
-  private(set) var resolvedSubtree: ResolvedNode?
-  private var childComponents: [NodeID: ComponentRuntimeNode] = [:]
+private typealias DeclarationPath = [AnyHashable]
 
-  private(set) var dirty = true
-  private(set) var subtreeDirty = true
+private struct CollectedComponentNode {
+  let path: DeclarationPath
+  let node: Node
+}
 
-  init(path: NodeID, component: AnyComponent, parent: ComponentRuntimeNode? = nil) {
-    self.path = path
-    self.component = component
-    self.parent = parent
-  }
+private struct CollectedLocalNode {
+  let path: DeclarationPath
+  let kind: LocalNodeKind
+}
 
-  func updateComponent(_ component: AnyComponent) {
-    guard !self.component.isEquivalent(to: component) else { return }
-    self.component = component
-    markDirty()
-  }
+private struct LocalNodeIdentity {
+  let id: NodeID
+  let kind: LocalNodeKind
+}
 
-  func markDirty() {
-    dirty = true
-    markSubtreeDirty()
-  }
-
-  func refreshIfNeeded(scheduleRefresh: @escaping @Sendable () -> Void) -> Bool {
-    guard subtreeDirty || resolvedSubtree == nil else { return false }
-
-    var didChange = resolvedSubtree == nil
-
-    if dirty || body == nil {
-      let newBody = withObservationTracking {
-        component.body()
-      } onChange: {
-        Task { @MainActor in
-          self.markDirty()
-          scheduleRefresh()
-        }
-      }
-
-      reconcileChildComponents(with: newBody)
-      body = newBody
-      dirty = false
-      didChange = true
-    }
-
-    for child in childComponents.values where child.subtreeDirty || child.resolvedSubtree == nil {
-      if child.refreshIfNeeded(scheduleRefresh: scheduleRefresh) {
-        didChange = true
-      }
-    }
-
-    if didChange, let body {
-      resolvedSubtree = buildResolvedTree(from: body, trail: [])
-    }
-
-    subtreeDirty = false
-    return didChange
-  }
-
-  private func markSubtreeDirty() {
-    guard !subtreeDirty else { return }
-    subtreeDirty = true
-    parent?.markSubtreeDirty()
-  }
-
-  private func reconcileChildComponents(with body: ComponentBody) {
-    let oldChildren = childComponents
-    var newChildren: [NodeID: ComponentRuntimeNode] = [:]
-    collectChildComponents(
-      in: body,
-      trail: [],
-      oldChildren: oldChildren,
-      newChildren: &newChildren
-    )
-    childComponents = newChildren
-  }
-
-  private func collectChildComponents(
-    in body: ComponentBody,
-    trail: NodeID,
-    oldChildren: [NodeID: ComponentRuntimeNode],
-    newChildren: inout [NodeID: ComponentRuntimeNode]
-  ) {
-    switch body {
-    case let .component(key, component):
-      let childPath = path + trail + [key]
-
-      if let existing = oldChildren[childPath], existing.component.isEquivalent(to: component) {
-        existing.parent = self
-        newChildren[childPath] = existing
-      } else {
-        newChildren[childPath] = ComponentRuntimeNode(
-          path: childPath,
-          component: component,
-          parent: self
-        )
-      }
-
-    case let .layout(key, _, children):
-      let nextTrail = trail + [key]
-      for child in children {
-        collectChildComponents(
-          in: child,
-          trail: nextTrail,
-          oldChildren: oldChildren,
-          newChildren: &newChildren
-        )
-      }
-
-    case .drawing:
-      break
-    }
-  }
-
-  private func buildResolvedTree(from body: ComponentBody, trail: NodeID) -> ResolvedNode {
-    switch body {
-    case let .component(key, _):
-      let childPath = path + trail + [key]
-      guard let child = childComponents[childPath], let resolved = child.resolvedSubtree else {
-        preconditionFailure("Missing resolved subtree for child component at path \(childPath)")
-      }
-      return resolved
-
-    case let .layout(key, layout, children):
-      let nextTrail = trail + [key]
-      return ResolvedNode(
-        id: path + nextTrail,
-        localKey: key,
-        content: .layout(
-          layout,
-          children.map { buildResolvedTree(from: $0, trail: nextTrail) }
-        )
-      )
-
-    case let .drawing(key, drawing):
-      let id = path + trail + [key]
-      return ResolvedNode(
-        id: id,
-        localKey: key,
-        content: .drawing(drawing)
-      )
-    }
-  }
+private enum LocalNodeKind {
+  case layout
+  case primitive
 }
 
 @MainActor
 @Observable
 public final class ComponentRenderer {
+  @ObservationIgnored private var nextID = NodeID.root.rawValue + 1
+  @ObservationIgnored private var registry: [NodeID: RuntimeEntry]
+  @ObservationIgnored private var dirtyIDs: Set<NodeID>
   @ObservationIgnored private var refreshScheduled = false
-  @ObservationIgnored private let rootNode: ComponentRuntimeNode
 
-  @ObservationIgnored public private(set) var renderRoot: RenderNode
+  public private(set) var resolvedRoot: ResolvedNode
   public private(set) var revision = 0
 
   public init(root: AnyComponent) {
-    rootNode = ComponentRuntimeNode(path: [], component: root)
-    let initialResolved = ComponentResolver.resolve(root)
-    renderRoot = RenderNode.make(from: initialResolved)
+    registry = [
+      .root: RuntimeEntry(
+        id: .root,
+        parentID: nil,
+        depth: 0,
+        component: root,
+        values: NodeValues()
+      )
+    ]
+    dirtyIDs = [.root]
+    resolvedRoot = ComponentResolver.resolve(root)
     refresh()
   }
 
   public func updateRoot(_ root: AnyComponent) {
-    rootNode.updateComponent(root)
+    guard var entry = registry[.root] else { return }
+    guard !entry.component.isEquivalent(to: root) else { return }
+    entry.component = root
+    registry[.root] = entry
+    markDirty(.root)
     scheduleRefresh()
   }
 
   public func refresh() {
-    let didChange = rootNode.refreshIfNeeded { [weak self] in
-      Task { @MainActor in
-        self?.scheduleRefresh()
+    let signpostID = OSSignpostID(log: canopyLog)
+    os_signpost(.begin, log: canopyLog, name: "ComponentRenderer.refresh", signpostID: signpostID)
+    let (resolvedRoot, didChange) = refreshResolvedTree()
+    os_signpost(.end, log: canopyLog, name: "ComponentRenderer.refresh", signpostID: signpostID)
+    guard didChange, let resolvedRoot else { return }
+
+    self.resolvedRoot = resolvedRoot
+    revision &+= 1
+  }
+
+  private func refreshResolvedTree() -> (ResolvedNode?, Bool) {
+    guard !dirtyIDs.isEmpty || registry[.root]?.resolvedNode == nil else {
+      return (registry[.root]?.resolvedNode, false)
+    }
+
+    let signpostID = OSSignpostID(log: canopyLog)
+    os_signpost(.begin, log: canopyLog, name: "refreshResolvedTree", signpostID: signpostID)
+
+    var pending = dirtyIDs.compactMap { id in
+      registry[id].map { ($0.depth, id) }
+    }
+    pending.sort { lhs, rhs in
+      lhs.0 == rhs.0 ? lhs.1 < rhs.1 : lhs.0 < rhs.0
+    }
+    dirtyIDs.removeAll()
+
+    var pendingIDs = Set(pending.map(\.1))
+    var rebuildIDs: Set<NodeID> = []
+
+    while let (_, id) = pending.first {
+      pending.removeFirst()
+      pendingIDs.remove(id)
+
+      guard var entry = registry[id] else { continue }
+
+      let newBody = withObservationTracking {
+        entry.component.body()
+      } onChange: { [weak self] in
+        Task { @MainActor in
+          self?.markDirty(id)
+          self?.scheduleRefresh()
+        }
+      }
+      os_signpost(.event, log: canopyLog, name: "bodyEvaluated")
+
+      let oldBody = entry.body
+      entry.body = newBody
+      registry[id] = entry
+
+      let childResult = reconcileChildComponents(parentID: id, body: newBody)
+      reconcileLocalNodes(parentID: id, body: newBody)
+      let bodyChanged = oldBody.map { !nodesAreEquivalent($0, newBody) } ?? true
+
+      if bodyChanged {
+        rebuildIDs.insert(id)
+      }
+      rebuildIDs.formUnion(childResult.rebuildIDs)
+
+      for dirtyChildID in childResult.dirtyIDs where pendingIDs.insert(dirtyChildID).inserted {
+        guard let childEntry = registry[dirtyChildID] else { continue }
+        pending.append((childEntry.depth, dirtyChildID))
+      }
+      pending.sort { lhs, rhs in
+        lhs.0 == rhs.0 ? lhs.1 < rhs.1 : lhs.0 < rhs.0
       }
     }
 
-    guard didChange, let resolved = rootNode.resolvedSubtree else { return }
+    for id in rebuildIDs {
+      var current = registry[id]?.parentID
+      while let ancestorID = current {
+        let inserted = rebuildIDs.insert(ancestorID).inserted
+        if !inserted { break }
+        current = registry[ancestorID]?.parentID
+      }
+    }
 
-    renderRoot = RenderNode.reconcile(existing: renderRoot, with: resolved)
-    revision &+= 1
+    guard let resolvedRoot = rebuildResolvedSubtree(for: .root, rebuildIDs: rebuildIDs) else {
+      os_signpost(.end, log: canopyLog, name: "refreshResolvedTree", signpostID: signpostID)
+      return (nil, false)
+    }
+    os_signpost(.end, log: canopyLog, name: "refreshResolvedTree", signpostID: signpostID)
+    return (resolvedRoot, true)
+  }
+
+  private func markDirty(_ id: NodeID) {
+    dirtyIDs.insert(id)
   }
 
   private func scheduleRefresh() {
@@ -332,6 +432,275 @@ public final class ComponentRenderer {
       refreshScheduled = false
       refresh()
     }
+  }
+
+  private func reconcileChildComponents(
+    parentID: NodeID,
+    body: Node
+  ) -> (dirtyIDs: Set<NodeID>, rebuildIDs: Set<NodeID>) {
+    guard var parentEntry = registry[parentID] else { return ([], []) }
+
+    let oldChildren = parentEntry.childComponents
+    let collectedChildren = collectComponentNodes(in: body)
+    var dirtyChildren: Set<NodeID> = []
+    var rebuildIDs: Set<NodeID> = []
+    var newChildren: [DeclarationPath: NodeID] = [:]
+
+    for collectedChild in collectedChildren {
+      guard case let .component(component) = collectedChild.node.content else { continue }
+
+      if let existingID = oldChildren[collectedChild.path], var existingEntry = registry[existingID] {
+        let componentChanged = !existingEntry.component.isEquivalent(to: component)
+        let valuesChanged = !existingEntry.values.isEquivalent(to: collectedChild.node.values)
+
+        existingEntry.component = component
+        existingEntry.values = collectedChild.node.values
+        registry[existingID] = existingEntry
+        newChildren[collectedChild.path] = existingID
+
+        if componentChanged {
+          dirtyChildren.insert(existingID)
+        }
+        if valuesChanged {
+          rebuildIDs.insert(existingID)
+        }
+      } else {
+        let id = allocateID()
+        registry[id] = RuntimeEntry(
+          id: id,
+          parentID: parentID,
+          depth: parentEntry.depth + 1,
+          component: component,
+          values: collectedChild.node.values
+        )
+        newChildren[collectedChild.path] = id
+        dirtyChildren.insert(id)
+        rebuildIDs.insert(id)
+        os_signpost(.event, log: canopyLog, name: "componentCreated")
+      }
+    }
+
+    let removedIDs = Set(oldChildren.values).subtracting(newChildren.values)
+    for removedID in removedIDs {
+      removeComponentSubtree(id: removedID)
+      os_signpost(.event, log: canopyLog, name: "componentRemoved")
+    }
+
+    parentEntry.childComponents = newChildren
+    registry[parentID] = parentEntry
+    return (dirtyChildren, rebuildIDs)
+  }
+
+  private func reconcileLocalNodes(parentID: NodeID, body: Node) {
+    guard var parentEntry = registry[parentID] else { return }
+
+    let oldNodes = parentEntry.localNodes
+    let collectedNodes = collectLocalNodes(in: body)
+    var newNodes: [DeclarationPath: LocalNodeIdentity] = [:]
+
+    for collectedNode in collectedNodes {
+      if let existing = oldNodes[collectedNode.path], existing.kind == collectedNode.kind {
+        newNodes[collectedNode.path] = existing
+      } else {
+        newNodes[collectedNode.path] = LocalNodeIdentity(
+          id: allocateID(),
+          kind: collectedNode.kind
+        )
+      }
+    }
+
+    parentEntry.localNodes = newNodes
+    parentEntry.localResolvedNodes = parentEntry.localResolvedNodes.filter { newNodes[$0.key] != nil }
+    registry[parentID] = parentEntry
+  }
+
+  private func rebuildResolvedSubtree(
+    for id: NodeID,
+    rebuildIDs: Set<NodeID>
+  ) -> ResolvedNode? {
+    guard var entry = registry[id], let body = entry.body else {
+      return registry[id]?.resolvedNode
+    }
+
+    if !rebuildIDs.contains(id), let resolvedNode = entry.resolvedNode {
+      return resolvedNode
+    }
+
+    var localResolvedNodes: [DeclarationPath: ResolvedNode] = [:]
+    let resolvedChild = resolveBody(
+      body,
+      for: id,
+      path: [],
+      rebuildIDs: rebuildIDs,
+      localResolvedNodes: &localResolvedNodes
+    )
+    let resolvedNode = reuseComponentNode(
+      existing: entry.resolvedNode,
+      component: entry.component,
+      child: resolvedChild,
+      id: entry.id,
+      values: entry.values
+    )
+    entry.localResolvedNodes = localResolvedNodes
+    entry.resolvedNode = resolvedNode
+    registry[id] = entry
+    return resolvedNode
+  }
+
+  private func resolveBody(
+    _ node: Node,
+    for ownerID: NodeID,
+    path: DeclarationPath,
+    rebuildIDs: Set<NodeID>,
+    localResolvedNodes: inout [DeclarationPath: ResolvedNode]
+  ) -> ResolvedNode {
+    switch node.content {
+    case .component:
+      guard let childID = registry[ownerID]?.childComponents[path] else {
+        preconditionFailure("Missing runtime entry for child component at path \(path)")
+      }
+      guard let child = rebuildResolvedSubtree(for: childID, rebuildIDs: rebuildIDs) else {
+        preconditionFailure("Missing resolved subtree for component \(childID)")
+      }
+      return child
+
+    case let .layout(layout, children):
+      let resolvedChildren = IdentifiedArray(
+        uniqueElements: children.map { child in
+          resolveIdentifiedNode(
+            child,
+            ownerID: ownerID,
+            path: path + [child.id],
+            rebuildIDs: rebuildIDs,
+            localResolvedNodes: &localResolvedNodes
+          )
+        }
+      )
+      let resolvedNode = reuseLayoutNode(
+        existing: registry[ownerID]?.localResolvedNodes[path],
+        layout: layout,
+        children: resolvedChildren,
+        id: localNodeID(for: ownerID, path: path, kind: .layout),
+        values: node.values
+      )
+      localResolvedNodes[path] = resolvedNode
+      return resolvedNode
+
+    case let .primitive(primitive):
+      let resolvedNode = reusePrimitiveNode(
+        existing: registry[ownerID]?.localResolvedNodes[path],
+        primitive: primitive,
+        id: localNodeID(for: ownerID, path: path, kind: .primitive),
+        values: node.values
+      )
+      localResolvedNodes[path] = resolvedNode
+      return resolvedNode
+    }
+  }
+
+  private func resolveIdentifiedNode(
+    _ identifiedNode: IdentifiedNode,
+    ownerID: NodeID,
+    path: DeclarationPath,
+    rebuildIDs: Set<NodeID>,
+    localResolvedNodes: inout [DeclarationPath: ResolvedNode]
+  ) -> ResolvedNode {
+    resolveBody(
+      identifiedNode.node,
+      for: ownerID,
+      path: path,
+      rebuildIDs: rebuildIDs,
+      localResolvedNodes: &localResolvedNodes
+    )
+  }
+
+  private func collectComponentNodes(in root: Node) -> [CollectedComponentNode] {
+    var collected: [CollectedComponentNode] = []
+    collectComponentNodes(in: root, trail: [], into: &collected)
+    return collected
+  }
+
+  private func collectComponentNodes(
+    in node: Node,
+    trail: DeclarationPath,
+    into collected: inout [CollectedComponentNode]
+  ) {
+    switch node.content {
+    case .component:
+      collected.append(CollectedComponentNode(path: trail, node: node))
+
+    case let .layout(_, children):
+      for child in children {
+        collectComponentNodes(
+          in: child.node,
+          trail: trail + [child.id],
+          into: &collected
+        )
+      }
+
+    case .primitive:
+      break
+    }
+  }
+
+  private func collectLocalNodes(in root: Node) -> [CollectedLocalNode] {
+    var collected: [CollectedLocalNode] = []
+    collectLocalNodes(in: root, trail: [], into: &collected)
+    return collected
+  }
+
+  private func collectLocalNodes(
+    in node: Node,
+    trail: DeclarationPath,
+    into collected: inout [CollectedLocalNode]
+  ) {
+    switch node.content {
+    case .component:
+      break
+
+    case let .layout(_, children):
+      collected.append(CollectedLocalNode(path: trail, kind: .layout))
+      for child in children {
+        collectLocalNodes(
+          in: child.node,
+          trail: trail + [child.id],
+          into: &collected
+        )
+      }
+
+    case .primitive:
+      collected.append(CollectedLocalNode(path: trail, kind: .primitive))
+    }
+  }
+
+  private func removeComponentSubtree(id: NodeID) {
+    guard let entry = registry[id] else { return }
+
+    for childID in entry.childComponents.values {
+      removeComponentSubtree(id: childID)
+    }
+
+    dirtyIDs.remove(id)
+    registry[id] = nil
+  }
+
+  private func localNodeID(
+    for ownerID: NodeID,
+    path: DeclarationPath,
+    kind: LocalNodeKind
+  ) -> NodeID {
+    guard let entry = registry[ownerID] else {
+      preconditionFailure("Missing runtime entry for owner \(ownerID)")
+    }
+    guard let identity = entry.localNodes[path], identity.kind == kind else {
+      preconditionFailure("Missing local \(kind) node identity at path \(path) for owner \(ownerID)")
+    }
+    return identity.id
+  }
+
+  private func allocateID() -> NodeID {
+    defer { nextID += 1 }
+    return NodeID(rawValue: nextID)
   }
 }
 
@@ -345,9 +714,135 @@ public struct ComponentTreeView: View {
   }
 
   public var body: some View {
-    RenderTreeView(root: renderer.renderRoot, revision: renderer.revision)
+    RenderTreeView(root: renderer.resolvedRoot, revision: renderer.revision)
       .onChange(of: root.identity, initial: true) { _, _ in
         renderer.updateRoot(root)
       }
   }
+}
+
+private func nodesAreEquivalent(_ lhs: Node, _ rhs: Node) -> Bool {
+  guard lhs.values.isEquivalent(to: rhs.values) else { return false }
+
+  switch (lhs.content, rhs.content) {
+  case let (.component(lhsComponent), .component(rhsComponent)):
+    return lhsComponent.isEquivalent(to: rhsComponent)
+
+  case let (.layout(lhsLayout, lhsChildren), .layout(rhsLayout, rhsChildren)):
+    guard lhsLayout.isEquivalent(to: rhsLayout) else { return false }
+    guard lhsChildren.count == rhsChildren.count else { return false }
+
+    for (lhsChild, rhsChild) in zip(lhsChildren, rhsChildren) {
+      guard lhsChild.id == rhsChild.id else { return false }
+      guard nodesAreEquivalent(lhsChild.node, rhsChild.node) else { return false }
+    }
+
+    return true
+
+  case let (.primitive(lhsPrimitive), .primitive(rhsPrimitive)):
+    return lhsPrimitive.isEquivalent(to: rhsPrimitive)
+
+  default:
+    return false
+  }
+}
+
+private func reuseComponentNode(
+  existing: ResolvedNode?,
+  component: AnyComponent,
+  child: ResolvedNode,
+  id: NodeID,
+  values: NodeValues
+) -> ResolvedNode {
+  guard let existing else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .component(component, child), values: values)
+  }
+  guard existing.id == id else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .component(component, child), values: values)
+  }
+  guard existing.values.isEquivalent(to: values) else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .component(component, child), values: values)
+  }
+  guard case let .component(existingComponent, existingChild) = existing.content else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .component(component, child), values: values)
+  }
+  guard existingComponent.isEquivalent(to: component), existingChild === child else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .component(component, child), values: values)
+  }
+  os_signpost(.event, log: canopyLog, name: "resolvedNodeReused")
+  return existing
+}
+
+private func reuseLayoutNode(
+  existing: ResolvedNode?,
+  layout: AnyLayout,
+  children: IdentifiedArrayOf<ResolvedNode>,
+  id: NodeID,
+  values: NodeValues
+) -> ResolvedNode {
+  guard let existing else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  guard existing.id == id else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  guard existing.values.isEquivalent(to: values) else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  guard case let .layout(existingLayout, existingChildren) = existing.content else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  guard existingLayout.isEquivalent(to: layout) else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  guard existingChildren.count == children.count else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  for (existingChild, child) in zip(existingChildren, children) where existingChild !== child {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .layout(layout, children), values: values)
+  }
+  os_signpost(.event, log: canopyLog, name: "resolvedNodeReused")
+  return existing
+}
+
+private func reusePrimitiveNode(
+  existing: ResolvedNode?,
+  primitive: Primitive,
+  id: NodeID,
+  values: NodeValues
+) -> ResolvedNode {
+  guard let existing else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .primitive(primitive), values: values)
+  }
+  guard existing.id == id else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .primitive(primitive), values: values)
+  }
+  guard existing.values.isEquivalent(to: values) else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .primitive(primitive), values: values)
+  }
+  guard case let .primitive(existingPrimitive) = existing.content else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .primitive(primitive), values: values)
+  }
+  guard existingPrimitive.isEquivalent(to: primitive) else {
+    os_signpost(.event, log: canopyLog, name: "resolvedNodeCreated")
+    return ResolvedNode(id: id, content: .primitive(primitive), values: values)
+  }
+  os_signpost(.event, log: canopyLog, name: "resolvedNodeReused")
+  return existing
 }

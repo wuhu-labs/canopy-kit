@@ -31,19 +31,80 @@ public struct ProposedSize: Hashable, Sendable {
   }
 }
 
+// MARK: - Node Values
+
+public protocol NodeValueKey {
+  associatedtype Value
+  static var defaultValue: Value { get }
+}
+
+private protocol AnyNodeValueBox {
+  var value: Any { get }
+  func isEquivalent(to other: any AnyNodeValueBox) -> Bool
+}
+
+private struct NodeValueBox<Value>: AnyNodeValueBox, @unchecked Sendable {
+  let typedValue: Value
+
+  var value: Any { typedValue }
+
+  func isEquivalent(to other: any AnyNodeValueBox) -> Bool {
+    guard let otherValue = other.value as? Value else { return false }
+    return defaultValueIsEquivalent(typedValue, otherValue)
+  }
+}
+
+public struct NodeValues: @unchecked Sendable {
+  private var storage: [ObjectIdentifier: any AnyNodeValueBox] = [:]
+
+  public init() {}
+
+  public subscript<K: NodeValueKey>(key: K.Type) -> K.Value {
+    get {
+      guard let storedValue = storage[ObjectIdentifier(key)] else {
+        return K.defaultValue
+      }
+      return storedValue.value as! K.Value
+    }
+    set {
+      let identifier = ObjectIdentifier(key)
+
+      if defaultValueIsEquivalent(newValue, K.defaultValue) {
+        storage[identifier] = nil
+      } else {
+        storage[identifier] = NodeValueBox(typedValue: newValue)
+      }
+    }
+  }
+
+  public func isEquivalent(to other: NodeValues) -> Bool {
+    guard storage.count == other.storage.count else { return false }
+
+    for (key, value) in storage {
+      guard let otherValue = other.storage[key] else { return false }
+      guard value.isEquivalent(to: otherValue) else { return false }
+    }
+
+    return true
+  }
+}
+
+public typealias LayoutValueKey = NodeValueKey
+public typealias LayoutValues = NodeValues
+
 // MARK: - Layout
 
 /// A proxy for a single child that the layout can measure with any proposal.
 public struct LayoutSubview {
   private let _sizeThatFits: (ProposedSize) -> CGSize
-  private let _layoutValues: LayoutValues
+  private let _nodeValues: NodeValues
 
   public init(
     _ sizeThatFits: @escaping (ProposedSize) -> CGSize,
-    layoutValues: LayoutValues = LayoutValues()
+    nodeValues: NodeValues = NodeValues()
   ) {
     _sizeThatFits = sizeThatFits
-    _layoutValues = layoutValues
+    _nodeValues = nodeValues
   }
 
   /// Measure this child with the given proposal.
@@ -51,29 +112,9 @@ public struct LayoutSubview {
     _sizeThatFits(proposal)
   }
 
-  /// Read a layout value from this child.
-  public subscript<K: LayoutValueKey>(key: K.Type) -> K.Value {
-    _layoutValues[key]
-  }
-}
-
-// MARK: - Layout Values
-
-/// Per-child key-value metadata that layouts can read.
-public protocol LayoutValueKey {
-  associatedtype Value
-  static var defaultValue: Value { get }
-}
-
-/// Storage for layout values attached to a child.
-public struct LayoutValues: @unchecked Sendable {
-  private var storage: [ObjectIdentifier: Any] = [:]
-
-  public init() {}
-
-  public subscript<K: LayoutValueKey>(key: K.Type) -> K.Value {
-    get { storage[ObjectIdentifier(key)] as? K.Value ?? K.defaultValue }
-    set { storage[ObjectIdentifier(key)] = newValue }
+  /// Read a node value from this child.
+  public subscript<K: NodeValueKey>(key: K.Type) -> K.Value {
+    _nodeValues[key]
   }
 }
 
@@ -89,7 +130,7 @@ public struct LayoutPlacement {
 /// Pure geometry: given measurable child proxies and a size proposal,
 /// measure children (with whatever proposals you want), compute the
 /// container's size, and place children.
-public protocol Layout {
+public protocol Layout: Sendable {
   /// Measure children and return (container size, per-child placements).
   func layout(
     subviews: [LayoutSubview],
@@ -100,26 +141,56 @@ public protocol Layout {
 // MARK: - AnyLayout
 
 public struct AnyLayout: @unchecked Sendable {
-  private let _layout:
-    ([LayoutSubview], ProposedSize) -> (size: CGSize, placements: [LayoutPlacement])
+  private let box: any AnyLayoutBox
 
-  public init(_ layout: some Layout) {
-    _layout = { subviews, proposal in
-      layout.layout(subviews: subviews, proposal: proposal)
-    }
+  public init<L: Layout>(_ layout: L) {
+    self.init(layout, isEquivalent: defaultValueIsEquivalent)
+  }
+
+  public init<L: Layout>(_ layout: L, isEquivalent: @escaping @Sendable (L, L) -> Bool) {
+    box = LayoutBox(layoutValue: layout, isEquivalentClosure: isEquivalent)
   }
 
   public func layout(
     subviews: [LayoutSubview],
     proposal: ProposedSize
   ) -> (size: CGSize, placements: [LayoutPlacement]) {
-    _layout(subviews, proposal)
+    box.layout(subviews: subviews, proposal: proposal)
+  }
+
+  public func isEquivalent(to other: AnyLayout) -> Bool {
+    box.isEquivalent(to: other.box)
+  }
+}
+
+private protocol AnyLayoutBox {
+  func layout(
+    subviews: [LayoutSubview],
+    proposal: ProposedSize
+  ) -> (size: CGSize, placements: [LayoutPlacement])
+  func isEquivalent(to other: any AnyLayoutBox) -> Bool
+}
+
+private struct LayoutBox<L: Layout>: AnyLayoutBox, @unchecked Sendable {
+  let layoutValue: L
+  let isEquivalentClosure: @Sendable (L, L) -> Bool
+
+  func layout(
+    subviews: [LayoutSubview],
+    proposal: ProposedSize
+  ) -> (size: CGSize, placements: [LayoutPlacement]) {
+    layoutValue.layout(subviews: subviews, proposal: proposal)
+  }
+
+  func isEquivalent(to other: any AnyLayoutBox) -> Bool {
+    guard let other = other as? Self else { return false }
+    return isEquivalentClosure(layoutValue, other.layoutValue)
   }
 }
 
 // MARK: - VStackLayout
 
-public struct VStackLayout: Layout {
+public struct VStackLayout: Layout, Equatable {
   public var spacing: CGFloat
 
   public init(spacing: CGFloat = 0) {
@@ -135,8 +206,8 @@ public struct VStackLayout: Layout {
     var y: CGFloat = 0
     var maxWidth: CGFloat = 0
 
-    for (i, subview) in subviews.enumerated() {
-      if i > 0 { y += spacing }
+    for (index, subview) in subviews.enumerated() {
+      if index > 0 { y += spacing }
       let childSize = subview.sizeThatFits(
         proposal: ProposedSize(width: proposedWidth, height: nil)
       )
@@ -152,7 +223,7 @@ public struct VStackLayout: Layout {
 
 // MARK: - HStackLayout
 
-public struct HStackLayout: Layout {
+public struct HStackLayout: Layout, Equatable {
   public var spacing: CGFloat
 
   public init(spacing: CGFloat = 0) {
@@ -169,8 +240,8 @@ public struct HStackLayout: Layout {
     var x: CGFloat = 0
     var maxHeight: CGFloat = 0
 
-    for (i, subview) in subviews.enumerated() {
-      if i > 0 { x += spacing }
+    for (index, subview) in subviews.enumerated() {
+      if index > 0 { x += spacing }
       let remainingWidth = proposedWidth.map { max(0, $0 - x) }
       let childSize = subview.sizeThatFits(
         proposal: ProposedSize(width: remainingWidth, height: proposedHeight)
@@ -180,20 +251,14 @@ public struct HStackLayout: Layout {
       maxHeight = max(maxHeight, childSize.height)
     }
 
-    let width: CGFloat
-    if let proposedWidth {
-      width = min(x, proposedWidth)
-    } else {
-      width = x
-    }
+    let width = proposedWidth.map { min(x, $0) } ?? x
     return (size: CGSize(width: width, height: maxHeight), placements: placements)
   }
 }
 
 // MARK: - InsetLayout
 
-/// Wraps a single child with edge insets. Proposes reduced size to the child.
-public struct InsetLayout: Layout {
+public struct InsetLayout: Layout, Equatable {
   public var left: CGFloat
   public var top: CGFloat
   public var right: CGFloat
@@ -220,20 +285,19 @@ public struct InsetLayout: Layout {
     let childSize = subview.sizeThatFits(
       proposal: ProposedSize(width: innerWidth, height: innerHeight)
     )
-    let placement = LayoutPlacement(origin: CGPoint(x: left, y: top))
-    let containerSize = CGSize(
-      width: childSize.width + left + right,
-      height: childSize.height + top + bottom
+    return (
+      size: CGSize(
+        width: childSize.width + left + right,
+        height: childSize.height + top + bottom
+      ),
+      placements: [LayoutPlacement(origin: CGPoint(x: left, y: top))]
     )
-    return (size: containerSize, placements: [placement])
   }
 }
 
 // MARK: - ZStackLayout
 
-/// Overlays all children at the same origin. Two-pass: measures children first,
-/// then re-proposes the union size so flexible children can stretch to fill.
-public struct ZStackLayout: Layout {
+public struct ZStackLayout: Layout, Equatable {
   public init() {}
 
   public func layout(
@@ -244,29 +308,29 @@ public struct ZStackLayout: Layout {
       return (size: .zero, placements: [])
     }
 
-    // Pass 1: measure each child with the incoming proposal.
     var sizes = subviews.map { $0.sizeThatFits(proposal: proposal) }
-    let unionWidth = sizes.map(\.width).max() ?? 0
-    let unionHeight = sizes.map(\.height).max() ?? 0
-    let unionSize = CGSize(width: unionWidth, height: unionHeight)
+    let unionSize = CGSize(
+      width: sizes.map(\.width).max() ?? 0,
+      height: sizes.map(\.height).max() ?? 0
+    )
 
-    // Pass 2: re-propose the union size so flexible children can stretch.
     let unionProposal = ProposedSize(width: unionSize.width, height: unionSize.height)
     sizes = subviews.map { $0.sizeThatFits(proposal: unionProposal) }
 
-    let finalWidth = sizes.map(\.width).max() ?? 0
-    let finalHeight = sizes.map(\.height).max() ?? 0
-
-    let placements = subviews.map { _ in LayoutPlacement(origin: .zero) }
-    return (size: CGSize(width: finalWidth, height: finalHeight), placements: placements)
+    let finalSize = CGSize(
+      width: sizes.map(\.width).max() ?? 0,
+      height: sizes.map(\.height).max() ?? 0
+    )
+    return (
+      size: finalSize,
+      placements: subviews.map { _ in LayoutPlacement(origin: .zero) }
+    )
   }
 }
 
 // MARK: - FrameLayout
 
-/// Overrides the proposal to its single child with explicit width/height values.
-/// `nil` means pass through the parent's proposal on that axis.
-public struct FrameLayout: Layout {
+public struct FrameLayout: Layout, Equatable {
   public var width: CGFloat?
   public var height: CGFloat?
 
@@ -279,29 +343,55 @@ public struct FrameLayout: Layout {
     subviews: [LayoutSubview],
     proposal: ProposedSize
   ) -> (size: CGSize, placements: [LayoutPlacement]) {
+    guard let subview = subviews.first else {
+      return (
+        size: CGSize(width: width ?? 0, height: height ?? 0),
+        placements: []
+      )
+    }
+
     let childProposal = ProposedSize(
       width: width ?? proposal.width,
       height: height ?? proposal.height
     )
-
-    guard let subview = subviews.first else {
-      let size = childProposal.replacingUnspecifiedDimensions(by: .zero)
-      return (size: size, placements: [])
-    }
-
     let childSize = subview.sizeThatFits(proposal: childProposal)
-
-    // The container reports the explicitly set dimensions, or the child's size.
     let containerSize = CGSize(
       width: width ?? childSize.width,
       height: height ?? childSize.height
     )
+    return (
+      size: containerSize,
+      placements: [
+        LayoutPlacement(
+          origin: CGPoint(
+            x: max(0, (containerSize.width - childSize.width) / 2),
+            y: max(0, (containerSize.height - childSize.height) / 2)
+          )
+        )
+      ]
+    )
+  }
+}
 
-    // Center the child within the container if the container is larger.
-    let originX = (containerSize.width - childSize.width) / 2
-    let originY = (containerSize.height - childSize.height) / 2
-    let placement = LayoutPlacement(origin: CGPoint(x: originX, y: originY))
+func defaultValueIsEquivalent<Value>(_ lhs: Value, _ rhs: Value) -> Bool {
+  if Value.self is AnyObject.Type {
+    return ObjectIdentifier(lhs as AnyObject) == ObjectIdentifier(rhs as AnyObject)
+  }
+  if let lhs = lhs as? any Equatable {
+    return defaultEquatableValueIsEquivalent(lhs, rhs)
+  }
+  return defaultBytewiseValueIsEquivalent(lhs, rhs)
+}
 
-    return (size: containerSize, placements: [placement])
+private func defaultEquatableValueIsEquivalent<Value: Equatable>(_ lhs: Value, _ rhs: Any) -> Bool {
+  guard let rhs = rhs as? Value else { return false }
+  return lhs == rhs
+}
+
+private func defaultBytewiseValueIsEquivalent<Value>(_ lhs: Value, _ rhs: Value) -> Bool {
+  withUnsafeBytes(of: lhs) { lhsBytes in
+    withUnsafeBytes(of: rhs) { rhsBytes in
+      lhsBytes.elementsEqual(rhsBytes)
+    }
   }
 }
