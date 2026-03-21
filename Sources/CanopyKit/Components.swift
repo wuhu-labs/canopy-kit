@@ -1,3 +1,4 @@
+import Collections
 import IdentifiedCollections
 import Observation
 import os.log
@@ -14,6 +15,17 @@ public struct NodeID: Hashable, Sendable, Comparable {
 
   public static func < (lhs: Self, rhs: Self) -> Bool {
     lhs.rawValue < rhs.rawValue
+  }
+}
+
+/// A min-heap entry that orders pending dirty nodes by (depth, id), so
+/// shallower ancestors are always processed before their descendants.
+private struct PendingEntry: Comparable {
+  let depth: Int
+  let id: NodeID
+
+  static func < (lhs: Self, rhs: Self) -> Bool {
+    lhs.depth == rhs.depth ? lhs.id < rhs.id : lhs.depth < rhs.depth
   }
 }
 
@@ -290,19 +302,16 @@ public final class ComponentRenderer {
     let signpostID = OSSignpostID(log: canopyLog)
     os_signpost(.begin, log: canopyLog, name: "refreshResolvedTree", signpostID: signpostID)
 
-    var pending = dirtyIDs.compactMap { id in
-      registry[id].map { ($0.depth, id) }
-    }
-    pending.sort { lhs, rhs in
-      lhs.0 == rhs.0 ? lhs.1 < rhs.1 : lhs.0 < rhs.0
-    }
+    var pending = Heap(dirtyIDs.compactMap { id in
+      registry[id].map { PendingEntry(depth: $0.depth, id: id) }
+    })
     dirtyIDs.removeAll()
 
-    var pendingIDs = Set(pending.map(\.1))
+    var pendingIDs = Set(pending.unordered.map(\.id))
     var rebuildIDs: Set<NodeID> = []
 
-    while let (_, id) = pending.first {
-      pending.removeFirst()
+    while let pendingEntry = pending.popMin() {
+      let id = pendingEntry.id
       pendingIDs.remove(id)
 
       guard var entry = registry[id] else { continue }
@@ -332,10 +341,7 @@ public final class ComponentRenderer {
 
       for dirtyChildID in childResult.dirtyIDs where pendingIDs.insert(dirtyChildID).inserted {
         guard let childEntry = registry[dirtyChildID] else { continue }
-        pending.append((childEntry.depth, dirtyChildID))
-      }
-      pending.sort { lhs, rhs in
-        lhs.0 == rhs.0 ? lhs.1 < rhs.1 : lhs.0 < rhs.0
+        pending.insert(PendingEntry(depth: childEntry.depth, id: dirtyChildID))
       }
     }
 
