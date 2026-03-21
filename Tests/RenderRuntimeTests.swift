@@ -2,7 +2,7 @@ import CoreGraphics
 import IdentifiedCollections
 import SwiftUI
 import Testing
-@testable import WuhuUI
+@testable import CanopyKit
 
 private struct ProjectionComponent: Component {
   func body() -> Node {

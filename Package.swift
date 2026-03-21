@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-  name: "WuhuUI",
+  name: "CanopyKit",
   platforms: [.macOS(.v14)],
   products: [
-    .library(name: "WuhuUI", targets: ["WuhuUI"]),
+    .library(name: "CanopyKit", targets: ["CanopyKit"]),
   ],
   dependencies: [
     .package(url: "https://github.com/pointfreeco/swift-identified-collections", from: "1.0.0"),
@@ -13,16 +13,16 @@ let package = Package(
   ],
   targets: [
     .target(
-      name: "WuhuUI",
+      name: "CanopyKit",
       dependencies: [
         .product(name: "IdentifiedCollections", package: "swift-identified-collections"),
         .product(name: "Markdown", package: "swift-markdown"),
       ],
-      path: "Sources/WuhuUI"
+      path: "Sources/CanopyKit"
     ),
     .testTarget(
-      name: "WuhuUITests",
-      dependencies: ["WuhuUI"],
+      name: "CanopyKitTests",
+      dependencies: ["CanopyKit"],
       path: "Tests"
     ),
   ]

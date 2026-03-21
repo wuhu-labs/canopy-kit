@@ -19,7 +19,7 @@ targets:
           - Package.swift
     dependencies:
       - package: CanopyKit
-        product: WuhuUI
+        product: CanopyKit
     settings:
       INFOPLIST_KEY_NSMainStoryboardFile: ""
       INFOPLIST_KEY_NSPrincipalClass: NSApplication

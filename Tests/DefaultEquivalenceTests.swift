@@ -1,7 +1,7 @@
 import CoreGraphics
 import struct SwiftUI.Path
 import Testing
-@testable import WuhuUI
+@testable import CanopyKit
 
 private struct SemanticComponent: Component, Equatable {
   let semanticID: Int
