@@ -160,6 +160,7 @@ public struct RectDrawing: CustomDrawing {
   }
 
   public func draw(in context: CGContext, bounds: CGRect, cache _: inout Cache) {
+    if bounds.width == 2 { print("draw with bounds: \(bounds)") }
     context.setFillColor(color)
     context.fill(bounds)
   }

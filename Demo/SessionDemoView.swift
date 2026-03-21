@@ -138,57 +138,12 @@ private func makeMockSessionModel() -> ChatSessionModel {
   let model = ChatSessionModel()
 
   model.messages = [
-    ChatMessageModel(
-      id: "msg-1",
-      role: .user,
-      author: "Minsheng",
-      content: "Can you help me build a CanopyKit-based session view? I want to replace the current WuhuDocView-backed chat UI with something that uses the reactive component tree for better incremental updates.",
-      timestamp: now.addingTimeInterval(-300)
-    ),
 
     ChatMessageModel(
       id: "msg-2",
       role: .assistant,
       content: """
       # Session View Architecture
-
-      Sure! Here's what I'm thinking for the **component tree structure**:
-
-      1. Each **user message** becomes a `UserMessageComponent`
-      2. Each **assistant message** becomes an `AssistantMessageComponent`
-      3. The **streaming section** is a separate component that appears/disappears
-
-      ## Key Benefits
-
-      - Stable component references mean *only changed messages re-render*
-      - The `@Observable` model provides fine-grained observation tracking
-      - CanopyKit's viewport culling means off-screen messages are essentially free
-
-      > The main challenge is that CanopyKit doesn't have interactive widgets like
-      > `DisclosureGroup` or `ProgressView`. We'll need to use text-based
-      > alternatives for now.
-
-      Here's a rough outline of the component:
-
-      ```swift
-      struct SessionRootComponent: Component {
-        let model: ChatSessionModel
-
-        func body() -> Node {
-          .layout(
-            AnyLayout(VStackLayout(spacing: 0)),
-            children: IdentifiedArray(
-              uniqueElements: model.messages.map { msg in
-                // Each message is a stable component
-                IdentifiedNode.component(key: msg.id, ...)
-              }
-            )
-          )
-        }
-      }
-      ```
-
-      The `IdentifiedArray` with `key: msg.id` ensures each message maintains its identity across re-renders.
       """,
       timestamp: now.addingTimeInterval(-240),
       toolCalls: [
@@ -197,91 +152,8 @@ private func makeMockSessionModel() -> ChatSessionModel {
           name: "read",
           arguments: "{\"path\": \"canopy-kit/Sources/CanopyKit/Components.swift\"}",
           result: "// CanopyKit components...\npublic protocol Component {\n  func body() -> Node\n}\n\npublic struct Node {\n  public var content: NodeContent\n  public var values: NodeValues\n}\n// ... 400 more lines"
-        ),
-        ChatToolCallModel(
-          id: "tc-2",
-          name: "write",
-          arguments: "{\"path\": \"SessionComponents.swift\"}",
-          result: "Successfully wrote 15000 bytes to SessionComponents.swift"
-        ),
+        )
       ]
-    ),
-
-    ChatMessageModel(
-      id: "msg-3",
-      role: .user,
-      author: "Minsheng",
-      content: "That looks great! What about tool calls and images?",
-      timestamp: now.addingTimeInterval(-180)
-    ),
-
-    ChatMessageModel(
-      id: "msg-4",
-      role: .assistant,
-      content: """
-      Good question! Here's how I'm handling those:
-
-      ### Tool Calls
-      Tool calls are rendered as compact blocks with:
-      - A **left accent bar** (like a blockquote) for visual grouping
-      - The tool name in `monospace` with an ⚙ icon
-      - **Tap to expand/collapse** the result — try clicking the tool calls above!
-
-      ### Images
-      Images can't be rendered yet — CanopyKit has no image primitive. I'm showing a **placeholder block** with the blob URI.
-
-      ### Things That Can't Work Yet
-
-      | Feature | Status | Notes |
-      |---------|--------|-------|
-      | Bold/Italic | ✅ Works | Via `NSAttributedString` |
-      | Code blocks | ✅ Works | Monospace + background |
-      | Tool call toggle | ✅ Works | Tap gesture + observable model |
-      | Links | ⚠️ Visual only | Colored+underlined, not clickable |
-      | Images | ❌ Placeholder | Need image primitive |
-      | Animations | ❌ N/A | No animation primitives |
-      """,
-      timestamp: now.addingTimeInterval(-120),
-      toolCalls: [
-        ChatToolCallModel(
-          id: "tc-3",
-          name: "bash",
-          arguments: "{\"command\": \"swift build 2>&1\"}",
-          result: "Building for debugging...\n[1/5] Compiling CanopyKit SessionComponents.swift\n[2/5] Compiling CanopyKit Components.swift\n[3/5] Compiling CanopyKit RenderRuntime.swift\n[4/5] Emitting module CanopyKit\n[5/5] Linking CanopyKitTests\nBuild complete! (14.23s)"
-        ),
-      ]
-    ),
-
-    ChatMessageModel(
-      id: "msg-5",
-      role: .user,
-      author: "Minsheng",
-      content: "Here's a screenshot of the current UI for reference:",
-      images: [
-        ChatImageAttachment(
-          id: "img-1",
-          blobURI: "blob://session-123/screenshot.png",
-          mimeType: "image/png"
-        ),
-      ],
-      timestamp: now.addingTimeInterval(-60)
-    ),
-
-    ChatMessageModel(
-      id: "msg-6",
-      role: .assistant,
-      content: """
-      I can see the screenshot reference. The current UI has a clean layout with:
-
-      - Status bar at the top
-      - Chat thread with `DocView`
-      - Input field at the bottom
-
-      The CanopyKit version will maintain the same *visual structure* but with much better **incremental update performance**. Each message being its own component means when a new message arrives, only the new component needs to be resolved — everything else is pointer-equal and skipped.
-
-      Let me know if you want me to proceed with the implementation!
-      """,
-      timestamp: now.addingTimeInterval(-30)
     ),
   ]
 

@@ -37,6 +37,7 @@ public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
     self.boundingRect = boundingRect
     self.values = values
     self.content = content
+    if frame.width == 2 { print("ResolvedRenderNode created: \(id) \(frame)") }
   }
 
   public var children: IdentifiedArrayOf<ResolvedRenderNode> {

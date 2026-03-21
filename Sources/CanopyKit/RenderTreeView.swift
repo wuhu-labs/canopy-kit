@@ -153,7 +153,14 @@ private struct PrimitiveCanvas: View {
   let node: ResolvedRenderNode
   let commitment: PrimitiveCommitment?
 
+  func debug() {
+    if node.frame.width == 2 {
+      print(node.id, node.frame)
+    }
+  }
+
   var body: some View {
+    let _ = debug()
     Canvas { context, size in
       switch commitment {
       case let .path(path):
