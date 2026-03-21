@@ -11,7 +11,7 @@ struct CanopyKitDemoApp: App {
 }
 
 struct DemoRootView: View {
-  @State private var selection: DemoKind? = .markdownStream
+  @State private var selection: DemoKind? = .staticMarkdown
 
   var body: some View {
     NavigationSplitView {

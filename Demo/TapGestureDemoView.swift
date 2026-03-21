@@ -56,6 +56,8 @@ struct TapGestureDemoComponent: Component {
     CGColor(red: 0.3, green: 0.5, blue: 0.9, alpha: 1),
   ]
 
+  private static let cardHeight: CGFloat = 40
+
   func body() -> Node {
     .layout(
       AnyLayout(VStackLayout(spacing: 12)),
@@ -66,10 +68,16 @@ struct TapGestureDemoComponent: Component {
             key: counter.id,
             AnyLayout(VStackLayout(spacing: 4)),
             children: [
-              .drawing(
+              .shape(
                 key: "bg",
-                AnyDrawing(RectDrawing(color: color, height: 40))
-              ),
+                AnyShape { proposal in
+                  let w = proposal.width ?? 200
+                  let h = Self.cardHeight
+                  let r = h / 2
+                  return Path(roundedRect: CGRect(x: 0, y: 0, width: w, height: h), cornerRadius: r)
+                }
+              )
+              .value(PrimitiveFillColorKey.self, color),
               .drawing(
                 key: "label",
                 AnyDrawing(TextDrawing("\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")", fontSize: 16))
