@@ -126,10 +126,7 @@ private struct TrackingDrawing: CustomDrawing {
     let counter = RenderCounter()
     let renderer = ComponentRenderer(
       root: AnyComponent(
-        CountingRootComponent(model: model, counter: counter),
-        isEquivalent: { lhs, rhs in
-          lhs.model === rhs.model && lhs.counter === rhs.counter
-        }
+        CountingRootComponent(model: model, counter: counter)
       )
     )
 

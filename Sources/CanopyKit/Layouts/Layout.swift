@@ -51,49 +51,25 @@ public protocol Layout: Sendable {
 // MARK: - AnyLayout
 
 public struct AnyLayout: @unchecked Sendable {
-  private let box: any AnyLayoutBox
+  private let value: any Layout
 
   public init<L: Layout>(_ layout: L) {
-    self.init(layout, isEquivalent: defaultValueIsEquivalent)
-  }
-
-  public init<L: Layout>(_ layout: L, isEquivalent: @escaping @Sendable (L, L) -> Bool) {
-    box = LayoutBox(layoutValue: layout, isEquivalentClosure: isEquivalent)
+    value = layout
   }
 
   public func layout(
     subviews: [LayoutSubview],
     proposal: ProposedSize
   ) -> (size: CGSize, placements: [LayoutPlacement]) {
-    box.layout(subviews: subviews, proposal: proposal)
+    value.layout(subviews: subviews, proposal: proposal)
   }
 
-  public func isEquivalent(to other: AnyLayout) -> Bool {
-    box.isEquivalent(to: other.box)
+  func isEquivalent(to other: AnyLayout) -> Bool {
+    compareLayout(lhs: value, rhs: other.value)
   }
 }
 
-private protocol AnyLayoutBox {
-  func layout(
-    subviews: [LayoutSubview],
-    proposal: ProposedSize
-  ) -> (size: CGSize, placements: [LayoutPlacement])
-  func isEquivalent(to other: any AnyLayoutBox) -> Bool
-}
-
-private struct LayoutBox<L: Layout>: AnyLayoutBox, @unchecked Sendable {
-  let layoutValue: L
-  let isEquivalentClosure: @Sendable (L, L) -> Bool
-
-  func layout(
-    subviews: [LayoutSubview],
-    proposal: ProposedSize
-  ) -> (size: CGSize, placements: [LayoutPlacement]) {
-    layoutValue.layout(subviews: subviews, proposal: proposal)
-  }
-
-  func isEquivalent(to other: any AnyLayoutBox) -> Bool {
-    guard let other = other as? Self else { return false }
-    return isEquivalentClosure(layoutValue, other.layoutValue)
-  }
+private func compareLayout<L: Layout>(lhs: L, rhs: any Layout) -> Bool {
+  guard let rhs = rhs as? L else { return false }
+  return defaultValueIsEquivalent(lhs, rhs)
 }

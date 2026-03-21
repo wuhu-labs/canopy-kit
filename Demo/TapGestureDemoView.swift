@@ -39,8 +39,7 @@ struct TapGestureDemoView: View {
 
       ComponentTreeView(
         root: AnyComponent(
-          TapGestureDemoComponent(model: model),
-          isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+          TapGestureDemoComponent(model: model)
         )
       )
     }
