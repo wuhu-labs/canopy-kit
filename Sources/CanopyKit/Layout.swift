@@ -118,12 +118,14 @@ public struct LayoutSubview {
   }
 }
 
-/// The result of layout: a placement origin for each child.
+/// The result of layout: a placement origin and proposed size for each child.
 public struct LayoutPlacement {
   public var origin: CGPoint
+  public var proposal: ProposedSize
 
-  public init(origin: CGPoint = .zero) {
+  public init(origin: CGPoint = .zero, proposal: ProposedSize = ProposedSize(width: nil, height: nil)) {
     self.origin = origin
+    self.proposal = proposal
   }
 }
 
@@ -208,10 +210,11 @@ public struct VStackLayout: Layout, Equatable {
 
     for (index, subview) in subviews.enumerated() {
       if index > 0 { y += spacing }
+      let childProposal = ProposedSize(width: proposedWidth, height: nil)
       let childSize = subview.sizeThatFits(
-        proposal: ProposedSize(width: proposedWidth, height: nil)
+        proposal: childProposal
       )
-      placements.append(LayoutPlacement(origin: CGPoint(x: 0, y: y)))
+      placements.append(LayoutPlacement(origin: CGPoint(x: 0, y: y), proposal: childProposal))
       y += childSize.height
       maxWidth = max(maxWidth, childSize.width)
     }
@@ -243,10 +246,11 @@ public struct HStackLayout: Layout, Equatable {
     for (index, subview) in subviews.enumerated() {
       if index > 0 { x += spacing }
       let remainingWidth = proposedWidth.map { max(0, $0 - x) }
+      let childProposal = ProposedSize(width: remainingWidth, height: proposedHeight)
       let childSize = subview.sizeThatFits(
-        proposal: ProposedSize(width: remainingWidth, height: proposedHeight)
+        proposal: childProposal
       )
-      placements.append(LayoutPlacement(origin: CGPoint(x: x, y: 0)))
+      placements.append(LayoutPlacement(origin: CGPoint(x: x, y: 0), proposal: childProposal))
       x += childSize.width
       maxHeight = max(maxHeight, childSize.height)
     }
@@ -282,15 +286,16 @@ public struct InsetLayout: Layout, Equatable {
 
     let innerWidth = proposal.width.map { max(0, $0 - left - right) }
     let innerHeight = proposal.height.map { max(0, $0 - top - bottom) }
+    let childProposal = ProposedSize(width: innerWidth, height: innerHeight)
     let childSize = subview.sizeThatFits(
-      proposal: ProposedSize(width: innerWidth, height: innerHeight)
+      proposal: childProposal
     )
     return (
       size: CGSize(
         width: childSize.width + left + right,
         height: childSize.height + top + bottom
       ),
-      placements: [LayoutPlacement(origin: CGPoint(x: left, y: top))]
+      placements: [LayoutPlacement(origin: CGPoint(x: left, y: top), proposal: childProposal)]
     )
   }
 }
@@ -323,7 +328,7 @@ public struct ZStackLayout: Layout, Equatable {
     )
     return (
       size: finalSize,
-      placements: subviews.map { _ in LayoutPlacement(origin: .zero) }
+      placements: subviews.map { _ in LayoutPlacement(origin: .zero, proposal: unionProposal) }
     )
   }
 }
@@ -366,7 +371,8 @@ public struct FrameLayout: Layout, Equatable {
           origin: CGPoint(
             x: max(0, (containerSize.width - childSize.width) / 2),
             y: max(0, (containerSize.height - childSize.height) / 2)
-          )
+          ),
+          proposal: childProposal
         )
       ]
     )
