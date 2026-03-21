@@ -64,7 +64,7 @@ private struct SemanticShape: ShapePrimitive, Equatable {
     lhs.semanticID == rhs.semanticID
   }
 
-  func path(proposal _: ProposedSize) -> Path {
+  func path(in _: CGRect) -> Path {
     Path(CGRect(x: 0, y: 0, width: semanticID, height: 10))
   }
 }

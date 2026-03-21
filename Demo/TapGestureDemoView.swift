@@ -68,16 +68,17 @@ struct TapGestureDemoComponent: Component {
             key: counter.id,
             AnyLayout(VStackLayout(spacing: 4)),
             children: [
-              .shape(
+              .layout(
                 key: "bg",
-                AnyShape { proposal in
-                  let w = proposal.width ?? 200
-                  let h = Self.cardHeight
-                  let r = h / 2
-                  return Path(roundedRect: CGRect(x: 0, y: 0, width: w, height: h), cornerRadius: r)
-                }
-              )
-              .value(PrimitiveFillColorKey.self, color),
+                AnyLayout(FrameLayout(height: Self.cardHeight)),
+                children: [
+                  .shape(
+                    key: "shape",
+                    AnyShape(Capsule())
+                  )
+                  .value(PrimitiveFillColorKey.self, color),
+                ]
+              ),
               .drawing(
                 key: "label",
                 AnyDrawing(TextDrawing("\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")", fontSize: 16))

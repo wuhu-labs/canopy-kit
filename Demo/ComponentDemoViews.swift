@@ -105,9 +105,16 @@ struct ParagraphCardComponent: Component, Equatable {
           key: "text",
           AnyDrawing(TextDrawing(paragraph.text, fontSize: 14))
         ),
-        .drawing(
+        .layout(
           key: "rule",
-          AnyDrawing(RectDrawing(color: CGColor(gray: 0.88, alpha: 1), height: 1))
+          AnyLayout(FrameLayout(height: 1)),
+          children: [
+            .shape(
+              key: "shape",
+              AnyShape(Rectangle())
+            )
+            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.88, alpha: 1)),
+          ]
         ),
       ]
     )
