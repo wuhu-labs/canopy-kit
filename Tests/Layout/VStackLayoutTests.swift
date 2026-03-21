@@ -1,6 +1,6 @@
 import CoreGraphics
 import Testing
-@testable import WuhuUI
+@testable import CanopyKit
 
 @Suite struct VStackLayoutTests {
   @Test func basicVerticalStacking() {

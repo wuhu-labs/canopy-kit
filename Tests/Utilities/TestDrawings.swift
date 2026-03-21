@@ -1,5 +1,5 @@
 import CoreGraphics
-@testable import WuhuUI
+@testable import CanopyKit
 
 // MARK: - Fixed-Size Drawing
 

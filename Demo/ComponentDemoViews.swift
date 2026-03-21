@@ -1,6 +1,6 @@
 import Observation
 import SwiftUI
-import WuhuUI
+import CanopyKit
 import IdentifiedCollections
 
 // MARK: - Static Markdown Demo

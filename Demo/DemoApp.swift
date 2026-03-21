@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct WuhuUIDemoApp: App {
+struct CanopyKitDemoApp: App {
   var body: some Scene {
     WindowGroup {
       DemoRootView()

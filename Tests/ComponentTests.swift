@@ -2,7 +2,7 @@ import CoreGraphics
 import IdentifiedCollections
 import Observation
 import Testing
-@testable import WuhuUI
+@testable import CanopyKit
 
 struct ChildComponent: Component, Equatable {
   var key: String
