@@ -1,5 +1,5 @@
 {
-  "originHash" : "8a371d92756e1442d2d432c958149edf0b64802a34cfd56f088ae1eff543acb1",
+  "originHash" : "51eb5a826178fa9a7f9c91df3170ac15235dbc26c805aaace4926446f6e46f09",
   "pins" : [
     {
       "identity" : "swift-cmark",
@@ -8,6 +8,24 @@
       "state" : {
         "revision" : "5d9bdaa4228b381639fff09403e39a04926e2dbe",
         "version" : "0.7.1"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections",
+      "state" : {
+        "revision" : "6675bc0ff86e61436e615df6fc5174e043e57924",
+        "version" : "1.4.1"
+      }
+    },
+    {
+      "identity" : "swift-identified-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/pointfreeco/swift-identified-collections",
+      "state" : {
+        "revision" : "322d9ffeeba85c9f7c4984b39422ec7cc3c56597",
+        "version" : "1.1.1"
       }
     },
     {

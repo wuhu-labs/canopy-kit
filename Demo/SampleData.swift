@@ -43,6 +43,12 @@ This demo parses real Markdown into the component tree.
 > - It can keep growing as content streams in.
 """
 
+/// Full markdown for a single document: prelude + one chunk.
+func makeDocumentMarkdown(index: Int) -> String {
+  markdownStreamingPrelude + "\n\n" + streamingMarkdownChunk(index: index)
+}
+
+/// Legacy: one giant concatenated document (kept for static demo).
 func makeStreamingMarkdownDocument(multiplier: Int) -> String {
   let body = (1 ... multiplier)
     .map { streamingMarkdownChunk(index: $0) }

@@ -3,3 +3,5 @@
 DerivedData/
 xcuserdata/
 *.xcodeproj
+*.trace/
+Benchmarks/

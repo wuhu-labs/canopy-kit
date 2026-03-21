@@ -1,27 +1,25 @@
 import CoreGraphics
+import IdentifiedCollections
 import Observation
 import Testing
 @testable import WuhuUI
-
-// MARK: - Test Components
 
 struct ChildComponent: Component, Equatable {
   var key: String
   var height: CGFloat
 
-  func body() -> ComponentBody {
-    .drawingNode(key: key, fixedDrawing(width: 100, height: height))
+  func body() -> Node {
+    .drawing(fixedDrawing(width: 100, height: height))
   }
 }
 
 struct ParentComponent: Component, Equatable {
-  func body() -> ComponentBody {
-    .layoutNode(
-      key: "root",
+  func body() -> Node {
+    .layout(
       AnyLayout(VStackLayout(spacing: 4)),
       children: [
-        .drawingNode(key: "header", fixedDrawing(width: 100, height: 20)),
-        .componentNode(key: "child", AnyComponent(ChildComponent(key: "body", height: 40))),
+        .drawing(key: "header", fixedDrawing(width: 100, height: 20)),
+        .component(key: "child", AnyComponent(ChildComponent(key: "body", height: 40))),
       ]
     )
   }
@@ -47,13 +45,17 @@ final class RenderCounter {
 struct ReactiveParagraphsComponent: Component {
   var model: ParagraphModel
 
-  func body() -> ComponentBody {
-    .layoutNode(
-      key: "root",
+  func body() -> Node {
+    .layout(
       AnyLayout(VStackLayout(spacing: 4)),
-      children: (0 ..< model.count).map { index in
-        .drawingNode(key: index, fixedDrawing(width: 100, height: 20))
-      }
+      children: IdentifiedArray(
+        uniqueElements: (0 ..< model.count).map { index in
+          IdentifiedNode.drawing(
+            key: index,
+            fixedDrawing(width: 100, height: 20)
+          )
+        }
+      )
     )
   }
 }
@@ -62,14 +64,13 @@ struct CountingRootComponent: Component {
   let model: PairModel
   let counter: RenderCounter
 
-  func body() -> ComponentBody {
+  func body() -> Node {
     counter.root += 1
 
-    return .layoutNode(
-      key: "root",
+    return .layout(
       AnyLayout(VStackLayout(spacing: 4)),
       children: [
-        .componentNode(
+        .component(
           key: "left",
           AnyComponent(
             CountingLeafComponent(side: .left, model: model, counter: counter),
@@ -78,7 +79,7 @@ struct CountingRootComponent: Component {
             }
           )
         ),
-        .componentNode(
+        .component(
           key: "right",
           AnyComponent(
             CountingLeafComponent(side: .right, model: model, counter: counter),
@@ -102,7 +103,7 @@ struct CountingLeafComponent: Component {
   let model: PairModel
   let counter: RenderCounter
 
-  func body() -> ComponentBody {
+  func body() -> Node {
     let value: Int
 
     switch side {
@@ -115,23 +116,43 @@ struct CountingLeafComponent: Component {
       value = model.right
     }
 
-    return .drawingNode(
-      key: "leaf",
+    return .drawing(
       fixedDrawing(width: CGFloat(80 + value), height: 20)
     )
   }
 }
 
-// MARK: - Component Resolver Tests
-
 @Suite struct ComponentResolverTests {
-  @Test func nestedComponentResolvesToPathBackedTree() {
+  @Test func nestedComponentPreservesComponentBoundary() {
     let root = ComponentResolver.resolve(AnyComponent(ParentComponent()))
 
-    #expect(root.id == ["root"])
-    #expect(root.children.count == 2)
-    #expect(root.children[0].id == ["root", "header"])
-    #expect(root.children[1].id == ["root", "child", "body"])
+    #expect(root.id == .root)
+
+    guard case let .component(_, rootBody) = root.content else {
+      Issue.record("Expected root component wrapper")
+      return
+    }
+    guard case let .layout(_, children) = rootBody.content else {
+      Issue.record("Expected root body to resolve as a layout")
+      return
+    }
+
+    #expect(children.count == 2)
+    #expect(children[0].id != children[1].id)
+
+    guard case .primitive = children[0].content else {
+      Issue.record("Expected header child to remain a primitive leaf")
+      return
+    }
+
+    guard case let .component(_, childLeaf) = children[1].content else {
+      Issue.record("Expected nested child component wrapper to survive resolution")
+      return
+    }
+    guard case .primitive = childLeaf.content else {
+      Issue.record("Expected nested child component body to remain a primitive leaf")
+      return
+    }
   }
 
   @Test func markdownComponentPreservesQuoteAndNestedListStructure() {
@@ -146,43 +167,64 @@ struct CountingLeafComponent: Component {
 
     let root = ComponentResolver.resolve(AnyComponent(MarkdownDocumentComponent(source: source)))
 
-    #expect(root.id == ["document"])
-
-    // Block quote is now a ZStack with a bar and inset content.
-    let blockQuote = root.children.first { $0.id == ["document", "block-1"] }
-    #expect(blockQuote != nil)
-    #expect(blockQuote?.children.count == 2)
-
-    // First child: the bar (FrameLayout > RectDrawing).
-    let bar = blockQuote?.children.first {
-      $0.id == ["document", "block-1", "block-1-bar"]
+    guard case let .component(_, documentNode) = root.content else {
+      Issue.record("Expected markdown root wrapper")
+      return
     }
-    #expect(bar != nil)
-
-    // Second child: inset content wrapping a VStack of quote blocks.
-    let contentInset = blockQuote?.children.first {
-      $0.id == ["document", "block-1", "block-1-content-inset"]
+    guard case let .layout(_, blocks) = documentNode.content else {
+      Issue.record("Expected markdown document body to be a layout")
+      return
     }
-    #expect(contentInset != nil)
 
-    let quoteContent = contentInset?.children.first {
-      $0.id == ["document", "block-1", "block-1-content-inset", "block-1-content"]
+    #expect(blocks.count == 2)
+
+    // Each block is now a component; unwrap it
+    guard case let .component(_, blockQuoteInner) = blocks[1].content else {
+      Issue.record("Expected block quote to resolve as a component")
+      return
     }
-    #expect(quoteContent != nil)
-    #expect(quoteContent?.children.count == 2)
+    guard case let .layout(_, quoteChildren) = blockQuoteInner.content else {
+      Issue.record("Expected block quote body to be a layout")
+      return
+    }
+    #expect(quoteChildren.count == 2)
 
-    // Second quote child is the nested list.
-    let quoteList = quoteContent?.children.last
-    #expect(quoteList?.children.count == 2)
+    guard case let .layout(_, barChildren) = quoteChildren[0].content else {
+      Issue.record("Expected block quote bar wrapper")
+      return
+    }
+    #expect(barChildren.count == 1)
+
+    guard case let .layout(_, insetChildren) = quoteChildren[1].content else {
+      Issue.record("Expected block quote content inset")
+      return
+    }
+    #expect(insetChildren.count == 1)
+
+    guard case let .layout(_, quoteContentChildren) = insetChildren[0].content else {
+      Issue.record("Expected block quote content stack")
+      return
+    }
+    #expect(quoteContentChildren.count == 2)
+
+    // Nested list items are now components too; unwrap the list component first
+    guard case let .component(_, listInner) = quoteContentChildren[1].content else {
+      Issue.record("Expected nested quote list to be a component")
+      return
+    }
+    guard case let .layout(_, quoteListChildren) = listInner.content else {
+      Issue.record("Expected nested quote list body to be a layout")
+      return
+    }
+    #expect(quoteListChildren.count == 2)
   }
 }
-
-// MARK: - Component Renderer Tests
 
 @MainActor
 @Suite struct ComponentRendererTests {
   @Test func observableChangeRefreshesRenderTree() async {
     let model = ParagraphModel()
+    let runtime = RenderRuntime()
     let renderer = ComponentRenderer(
       root: AnyComponent(
         ReactiveParagraphsComponent(model: model),
@@ -191,7 +233,13 @@ struct CountingLeafComponent: Component {
     )
 
     let initialRevision = renderer.revision
-    #expect(renderer.renderRoot.leaves().count == 2)
+    #expect(
+      runtime.layout(
+        root: renderer.resolvedRoot,
+        proposal: ProposedSize(width: 200, height: nil),
+        viewport: CGRect(x: 0, y: 0, width: 200, height: 400)
+      ).leaves().count == 2
+    )
 
     model.count = 4
     for _ in 0 ..< 10 {
@@ -200,7 +248,13 @@ struct CountingLeafComponent: Component {
     }
 
     #expect(renderer.revision > initialRevision)
-    #expect(renderer.renderRoot.leaves().count == 4)
+    #expect(
+      runtime.layout(
+        root: renderer.resolvedRoot,
+        proposal: ProposedSize(width: 200, height: nil),
+        viewport: CGRect(x: 0, y: 0, width: 200, height: 400)
+      ).leaves().count == 4
+    )
   }
 
   @Test func observableChangeRefreshesOnlyDirtyComponentPath() async {

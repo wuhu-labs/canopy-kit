@@ -1,5 +1,8 @@
 import CoreGraphics
+import IdentifiedCollections
 import Markdown
+
+// MARK: - Document Component
 
 public struct MarkdownDocumentComponent: Component, Equatable {
   public var source: String
@@ -8,158 +11,276 @@ public struct MarkdownDocumentComponent: Component, Equatable {
     self.source = source
   }
 
-  public func body() -> ComponentBody {
+  public func body() -> Node {
     let document = Document(parsing: source)
+    let blocks = Array(document.children)
 
-    return .layoutNode(
-      key: "document",
+    return .layout(
       AnyLayout(VStackLayout(spacing: 8)),
-      children: renderBlocks(Array(document.children), keyPrefix: "block")
+      children: IdentifiedArray(
+        uniqueElements: blocks.enumerated().compactMap { index, block in
+          blockComponent(block, key: "block-\(index)")
+        }
+      )
     )
   }
 }
 
-private func renderBlocks(_ blocks: [Markup], keyPrefix: String) -> [ComponentBody] {
-  blocks.enumerated().compactMap { index, block in
-    renderBlock(block, key: "\(keyPrefix)-\(index)")
-  }
-}
+// MARK: - Block Components
 
-private func renderBlock(_ markup: Markup, key: String) -> ComponentBody? {
-  switch markup {
-  case let heading as Heading:
-    let size: CGFloat
-    switch heading.level {
-    case 1: size = 30
-    case 2: size = 24
-    case 3: size = 19
-    default: size = 16
+struct HeadingBlockComponent: Component, Equatable {
+  let text: String
+  let level: Int
+
+  func body() -> Node {
+    let size: CGFloat = switch level {
+    case 1: 30
+    case 2: 24
+    case 3: 19
+    default: 16
     }
+    return .primitive(.customDrawing(AnyDrawing(TextDrawing(text, fontSize: size))))
+  }
+}
 
-    return .drawingNode(
-      key: key,
-      AnyDrawing(TextDrawing(heading.plainText, fontSize: size))
+struct ParagraphBlockComponent: Component, Equatable {
+  let text: String
+
+  func body() -> Node {
+    .primitive(.customDrawing(AnyDrawing(TextDrawing(text, fontSize: 14))))
+  }
+}
+
+struct CodeBlockComponent: Component, Equatable {
+  let code: String
+
+  func body() -> Node {
+    .layout(
+      AnyLayout(InsetLayout(left: 12, top: 8, right: 12, bottom: 8)),
+      children: [
+        .drawing(key: "code", AnyDrawing(TextDrawing(code, fontSize: 13))),
+      ]
     )
+  }
+}
 
-  case let paragraph as Paragraph:
-    return .drawingNode(
-      key: key,
-      AnyDrawing(TextDrawing(paragraph.plainText, fontSize: 14))
-    )
+struct ThematicBreakComponent: Component, Equatable {
+  func body() -> Node {
+    .primitive(.customDrawing(AnyDrawing(RectDrawing(color: CGColor(gray: 0.8, alpha: 1), height: 1))))
+  }
+}
 
-  case let unorderedList as UnorderedList:
-    let items = Array(unorderedList.children)
-    return .layoutNode(
-      key: key,
-      AnyLayout(VStackLayout(spacing: 6)),
-      children: items.enumerated().compactMap { index, child in
-        guard let listItem = child as? ListItem else { return nil }
-        return renderListItem(
-          listItem,
-          key: "\(key)-item-\(index)",
-          marker: "\u{2022}"
-        )
-      }
-    )
+struct BlockQuoteComponent: Component, Equatable {
+  let childBlocks: [BlockData]
 
-  case let orderedList as OrderedList:
-    let items = Array(orderedList.children)
-    return .layoutNode(
-      key: key,
-      AnyLayout(VStackLayout(spacing: 6)),
-      children: items.enumerated().compactMap { index, child in
-        guard let listItem = child as? ListItem else { return nil }
-        return renderListItem(
-          listItem,
-          key: "\(key)-item-\(index)",
-          marker: "\(orderedList.startIndex + UInt(index))."
-        )
-      }
-    )
-
-  case let blockQuote as BlockQuote:
-    // ZStack: a thin vertical bar (stretched to full height) behind inset content.
-    return .layoutNode(
-      key: key,
+  func body() -> Node {
+    .layout(
       AnyLayout(ZStackLayout()),
       children: [
-        .layoutNode(
-          key: "\(key)-bar",
+        .layout(
+          key: "bar",
           AnyLayout(FrameLayout(width: 3)),
           children: [
-            .drawingNode(
-              key: "\(key)-bar-rect",
+            .drawing(
+              key: "rect",
               AnyDrawing(RectDrawing(color: CGColor(gray: 0.7, alpha: 1), height: 0))
             ),
           ]
         ),
-        .layoutNode(
-          key: "\(key)-content-inset",
+        .layout(
+          key: "content-inset",
           AnyLayout(InsetLayout(left: 13)),
           children: [
-            .layoutNode(
-              key: "\(key)-content",
+            .layout(
+              key: "content",
               AnyLayout(VStackLayout(spacing: 8)),
-              children: renderBlocks(
-                Array(blockQuote.children), keyPrefix: "\(key)-quote"
+              children: IdentifiedArray(
+                uniqueElements: childBlocks.enumerated().compactMap { index, block in
+                  blockComponentFromData(block, key: "quote-\(index)")
+                }
               )
             ),
           ]
         ),
       ]
     )
+  }
+}
 
-  case _ as ThematicBreak:
-    return .drawingNode(
-      key: key,
-      AnyDrawing(RectDrawing(color: CGColor(gray: 0.8, alpha: 1), height: 1))
-    )
+struct UnorderedListComponent: Component, Equatable {
+  let items: [ListItemData]
 
-  case let codeBlock as CodeBlock:
-    return .layoutNode(
-      key: key,
-      AnyLayout(InsetLayout(left: 12, top: 8, right: 12, bottom: 8)),
-      children: [
-        .drawingNode(
-          key: "\(key)-code",
-          AnyDrawing(TextDrawing(codeBlock.code, fontSize: 13))
-        )
-      ]
-    )
-
-  default:
-    let fallback = plainText(from: markup)
-    guard !fallback.isEmpty else { return nil }
-    return .drawingNode(
-      key: key,
-      AnyDrawing(TextDrawing(fallback, fontSize: 14))
+  func body() -> Node {
+    .layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: IdentifiedArray(
+        uniqueElements: items.enumerated().map { index, item in
+          IdentifiedNode.component(
+            key: "item-\(index)",
+            AnyComponent(ListItemComponent(marker: "\u{2022}", item: item))
+          )
+        }
+      )
     )
   }
 }
 
-private func renderListItem(_ item: ListItem, key: String, marker: String) -> ComponentBody {
-  .layoutNode(
-    key: key,
-    AnyLayout(HStackLayout(spacing: 8)),
-    children: [
-      .drawingNode(
-        key: "\(key)-marker",
-        AnyDrawing(TextDrawing(marker, fontSize: 14))
-      ),
-      .layoutNode(
-        key: "\(key)-content",
-        AnyLayout(VStackLayout(spacing: 6)),
-        children: renderBlocks(Array(item.children), keyPrefix: "\(key)-block")
-      ),
-    ]
-  )
+struct OrderedListComponent: Component, Equatable {
+  let startIndex: UInt
+  let items: [ListItemData]
+
+  func body() -> Node {
+    .layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: IdentifiedArray(
+        uniqueElements: items.enumerated().map { index, item in
+          IdentifiedNode.component(
+            key: "item-\(index)",
+            AnyComponent(ListItemComponent(
+              marker: "\(startIndex + UInt(index)).",
+              item: item
+            ))
+          )
+        }
+      )
+    )
+  }
 }
+
+struct ListItemComponent: Component, Equatable {
+  let marker: String
+  let item: ListItemData
+
+  func body() -> Node {
+    .layout(
+      AnyLayout(HStackLayout(spacing: 8)),
+      children: [
+        .drawing(
+          key: "marker",
+          AnyDrawing(TextDrawing(marker, fontSize: 14))
+        ),
+        .layout(
+          key: "content",
+          AnyLayout(VStackLayout(spacing: 6)),
+          children: IdentifiedArray(
+            uniqueElements: item.childBlocks.enumerated().compactMap { index, block in
+              blockComponentFromData(block, key: "block-\(index)")
+            }
+          )
+        ),
+      ]
+    )
+  }
+}
+
+struct FallbackTextComponent: Component, Equatable {
+  let text: String
+
+  func body() -> Node {
+    .primitive(.customDrawing(AnyDrawing(TextDrawing(text, fontSize: 14))))
+  }
+}
+
+// MARK: - Extracted Data (Equatable, value types)
+
+enum BlockData: Equatable {
+  case heading(text: String, level: Int)
+  case paragraph(text: String)
+  case codeBlock(code: String)
+  case thematicBreak
+  case blockQuote(children: [BlockData])
+  case unorderedList(items: [ListItemData])
+  case orderedList(startIndex: UInt, items: [ListItemData])
+  case fallbackText(text: String)
+}
+
+struct ListItemData: Equatable {
+  let childBlocks: [BlockData]
+}
+
+// MARK: - Markup → Data Extraction
+
+private func extractBlockData(_ markup: Markup) -> BlockData? {
+  switch markup {
+  case let heading as Heading:
+    return .heading(text: heading.plainText, level: heading.level)
+
+  case let paragraph as Paragraph:
+    return .paragraph(text: paragraph.plainText)
+
+  case let codeBlock as CodeBlock:
+    return .codeBlock(code: codeBlock.code)
+
+  case _ as ThematicBreak:
+    return .thematicBreak
+
+  case let blockQuote as BlockQuote:
+    let children = Array(blockQuote.children).compactMap(extractBlockData)
+    return .blockQuote(children: children)
+
+  case let unorderedList as UnorderedList:
+    let items = Array(unorderedList.children).compactMap { child -> ListItemData? in
+      guard let listItem = child as? ListItem else { return nil }
+      return ListItemData(childBlocks: Array(listItem.children).compactMap(extractBlockData))
+    }
+    return .unorderedList(items: items)
+
+  case let orderedList as OrderedList:
+    let items = Array(orderedList.children).compactMap { child -> ListItemData? in
+      guard let listItem = child as? ListItem else { return nil }
+      return ListItemData(childBlocks: Array(listItem.children).compactMap(extractBlockData))
+    }
+    return .orderedList(startIndex: orderedList.startIndex, items: items)
+
+  default:
+    let text = plainText(from: markup)
+    guard !text.isEmpty else { return nil }
+    return .fallbackText(text: text)
+  }
+}
+
+// MARK: - Data → Component Nodes
+
+private func blockComponentFromData(_ block: BlockData, key: String) -> IdentifiedNode? {
+  switch block {
+  case let .heading(text, level):
+    return .component(key: key, AnyComponent(HeadingBlockComponent(text: text, level: level)))
+
+  case let .paragraph(text):
+    return .component(key: key, AnyComponent(ParagraphBlockComponent(text: text)))
+
+  case let .codeBlock(code):
+    return .component(key: key, AnyComponent(CodeBlockComponent(code: code)))
+
+  case .thematicBreak:
+    return .component(key: key, AnyComponent(ThematicBreakComponent()))
+
+  case let .blockQuote(children):
+    return .component(key: key, AnyComponent(BlockQuoteComponent(childBlocks: children)))
+
+  case let .unorderedList(items):
+    return .component(key: key, AnyComponent(UnorderedListComponent(items: items)))
+
+  case let .orderedList(startIndex, items):
+    return .component(key: key, AnyComponent(OrderedListComponent(startIndex: startIndex, items: items)))
+
+  case let .fallbackText(text):
+    return .component(key: key, AnyComponent(FallbackTextComponent(text: text)))
+  }
+}
+
+/// Bridge from Markup AST directly to component node (used by MarkdownDocumentComponent.body).
+private func blockComponent(_ markup: Markup, key: String) -> IdentifiedNode? {
+  guard let data = extractBlockData(markup) else { return nil }
+  return blockComponentFromData(data, key: key)
+}
+
+// MARK: - Helpers
 
 private func plainText(from markup: Markup) -> String {
   if let markup = markup as? any PlainTextConvertibleMarkup {
     return markup.plainText
   }
-
   return Array(markup.children)
     .map(plainText(from:))
     .joined()

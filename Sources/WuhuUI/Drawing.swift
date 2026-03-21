@@ -1,72 +1,233 @@
 import CoreGraphics
-import CoreText
+import SwiftUI
 
 // MARK: - Custom Drawing
 
-/// A leaf knows how to measure itself and draw itself.
-/// `Cache` is created once and reused across multiple sizeThatFits / draw calls
-/// (e.g. a CTTypesetter for text).
 public protocol CustomDrawing {
   associatedtype Cache
 
-  /// Create the cache from the current data. Called once when the node is
-  /// created or when its content changes.
   func makeCache() -> Cache
-
-  /// Return the ideal size for the given proposal.
-  /// The cache (e.g. typesetter) makes repeated calls with different proposals cheap.
+  func updateCache(_ cache: inout Cache)
   func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize
-
-  /// Draw into the given CGContext at the given rect.
   func draw(in context: CGContext, bounds: CGRect, cache: inout Cache)
 }
 
-// MARK: - AnyDrawing (type-erased)
+public extension CustomDrawing {
+  func updateCache(_ cache: inout Cache) {
+    cache = makeCache()
+  }
+}
 
-/// Type-erased wrapper so RenderNode can hold any CustomDrawing.
+// MARK: - Shapes
+
+public protocol ShapePrimitive {
+  func path(proposal: ProposedSize) -> Path
+}
+
+public extension ShapePrimitive {
+  func sizeThatFits(proposal: ProposedSize) -> CGSize {
+    let fallback = proposal.replacingUnspecifiedDimensions()
+    let boundingRect = path(proposal: proposal).boundingRect
+
+    return CGSize(
+      width: max(boundingRect.width, proposal.width ?? fallback.width),
+      height: max(boundingRect.height, proposal.height ?? fallback.height)
+    )
+  }
+}
+
+public struct AnyShape: @unchecked Sendable {
+  private let box: any AnyShapeBox
+
+  public init<S: ShapePrimitive>(_ shape: S) {
+    self.init(shape, isEquivalent: defaultValueIsEquivalent)
+  }
+
+  public init<S: ShapePrimitive>(
+    _ shape: S,
+    isEquivalent: @escaping @Sendable (S, S) -> Bool
+  ) {
+    box = ShapeBox(shape: shape, isEquivalentClosure: isEquivalent)
+  }
+
+  public init(_ path: @escaping @Sendable (ProposedSize) -> Path) {
+    self.init(ClosureShape(path: path))
+  }
+
+  public func path(proposal: ProposedSize) -> Path {
+    box.path(proposal: proposal)
+  }
+
+  public func sizeThatFits(proposal: ProposedSize) -> CGSize {
+    box.sizeThatFits(proposal: proposal)
+  }
+
+  public func isEquivalent(to other: AnyShape) -> Bool {
+    box.isEquivalent(to: other.box)
+  }
+}
+
+private protocol AnyShapeBox {
+  func path(proposal: ProposedSize) -> Path
+  func sizeThatFits(proposal: ProposedSize) -> CGSize
+  func isEquivalent(to other: any AnyShapeBox) -> Bool
+}
+
+private struct ShapeBox<S: ShapePrimitive>: AnyShapeBox, @unchecked Sendable {
+  let shape: S
+  let isEquivalentClosure: @Sendable (S, S) -> Bool
+
+  func path(proposal: ProposedSize) -> Path {
+    shape.path(proposal: proposal)
+  }
+
+  func sizeThatFits(proposal: ProposedSize) -> CGSize {
+    shape.sizeThatFits(proposal: proposal)
+  }
+
+  func isEquivalent(to other: any AnyShapeBox) -> Bool {
+    guard let other = other as? Self else { return false }
+    return isEquivalentClosure(shape, other.shape)
+  }
+}
+
+private struct ClosureShape: ShapePrimitive {
+  let pathBuilder: @Sendable (ProposedSize) -> Path
+
+  init(path: @escaping @Sendable (ProposedSize) -> Path) {
+    pathBuilder = path
+  }
+
+  func path(proposal: ProposedSize) -> Path {
+    pathBuilder(proposal)
+  }
+}
+
+// MARK: - AnyDrawing
+
 public struct AnyDrawing: @unchecked Sendable {
-  private let _makeCache: () -> Any
-  private let _sizeThatFits: (ProposedSize, inout Any) -> CGSize
-  private let _draw: (CGContext, CGRect, inout Any) -> Void
-
-  /// The cache, created lazily.
-  private var _cache: Any?
+  private let box: any AnyDrawingBox
 
   public init<D: CustomDrawing>(_ drawing: D) {
-    _makeCache = { drawing.makeCache() as Any }
-    _sizeThatFits = { proposal, cache in
-      var typed = cache as! D.Cache
-      let size = drawing.sizeThatFits(proposal: proposal, cache: &typed)
-      cache = typed
-      return size
+    self.init(drawing, isEquivalent: defaultValueIsEquivalent)
+  }
+
+  public init<D: CustomDrawing>(
+    _ drawing: D,
+    isEquivalent: @escaping @Sendable (D, D) -> Bool
+  ) {
+    box = DrawingBox(drawing: drawing, isEquivalentClosure: isEquivalent)
+  }
+
+  func makeCache() -> Any {
+    box.makeCache()
+  }
+
+  func updateCache(cache: inout Any) {
+    box.updateCache(cache: &cache)
+  }
+
+  func sizeThatFits(proposal: ProposedSize, cache: inout Any) -> CGSize {
+    box.sizeThatFits(proposal: proposal, cache: &cache)
+  }
+
+  func draw(in context: CGContext, bounds: CGRect, cache: inout Any) {
+    box.draw(in: context, bounds: bounds, cache: &cache)
+  }
+
+  public func isEquivalent(to other: AnyDrawing) -> Bool {
+    box.isEquivalent(to: other.box)
+  }
+}
+
+private protocol AnyDrawingBox {
+  func makeCache() -> Any
+  func updateCache(cache: inout Any)
+  func sizeThatFits(proposal: ProposedSize, cache: inout Any) -> CGSize
+  func draw(in context: CGContext, bounds: CGRect, cache: inout Any)
+  func isEquivalent(to other: any AnyDrawingBox) -> Bool
+}
+
+private struct DrawingBox<D: CustomDrawing>: AnyDrawingBox, @unchecked Sendable {
+  let drawing: D
+  let isEquivalentClosure: @Sendable (D, D) -> Bool
+
+  func makeCache() -> Any {
+    drawing.makeCache()
+  }
+
+  func updateCache(cache: inout Any) {
+    guard var typedCache = cache as? D.Cache else {
+      cache = drawing.makeCache()
+      return
     }
-    _draw = { context, bounds, cache in
-      var typed = cache as! D.Cache
-      drawing.draw(in: context, bounds: bounds, cache: &typed)
-      cache = typed
+    drawing.updateCache(&typedCache)
+    cache = typedCache
+  }
+
+  func sizeThatFits(proposal: ProposedSize, cache: inout Any) -> CGSize {
+    var typedCache = cache as! D.Cache
+    let size = drawing.sizeThatFits(proposal: proposal, cache: &typedCache)
+    cache = typedCache
+    return size
+  }
+
+  func draw(in context: CGContext, bounds: CGRect, cache: inout Any) {
+    var typedCache = cache as! D.Cache
+    drawing.draw(in: context, bounds: bounds, cache: &typedCache)
+    cache = typedCache
+  }
+
+  func isEquivalent(to other: any AnyDrawingBox) -> Bool {
+    guard let other = other as? Self else { return false }
+    return isEquivalentClosure(drawing, other.drawing)
+  }
+}
+
+// MARK: - Primitive
+
+public enum Primitive: @unchecked Sendable {
+  case shape(AnyShape)
+  case customDrawing(AnyDrawing)
+
+  public func isEquivalent(to other: Primitive) -> Bool {
+    switch (self, other) {
+    case let (.shape(lhs), .shape(rhs)):
+      lhs.isEquivalent(to: rhs)
+    case let (.customDrawing(lhs), .customDrawing(rhs)):
+      lhs.isEquivalent(to: rhs)
+    default:
+      false
     }
-    _cache = nil
   }
+}
 
-  /// Ensure the cache exists.
-  mutating func ensureCache() {
-    if _cache == nil {
-      _cache = _makeCache()
-    }
-  }
+// MARK: - Primitive Styling
 
-  public mutating func sizeThatFits(proposal: ProposedSize) -> CGSize {
-    ensureCache()
-    return _sizeThatFits(proposal, &_cache!)
+public struct PrimitiveFillColorKey: NodeValueKey {
+  public static var defaultValue: CGColor? {
+    CGColor(gray: 0, alpha: 1)
   }
+}
 
-  public mutating func draw(in context: CGContext, bounds: CGRect) {
-    ensureCache()
-    _draw(context, bounds, &_cache!)
-  }
+public struct PrimitiveStrokeStyle: @unchecked Sendable {
+  public var color: CGColor
+  public var lineWidth: CGFloat
 
-  /// Recreate the cache (call when content changes).
-  public mutating func invalidateCache() {
-    _cache = nil
+  public init(color: CGColor, lineWidth: CGFloat = 1) {
+    self.color = color
+    self.lineWidth = lineWidth
   }
+}
+
+public struct PrimitiveStrokeStyleKey: NodeValueKey {
+  public static let defaultValue: PrimitiveStrokeStyle? = nil
+}
+
+public struct OpacityKey: NodeValueKey {
+  public static let defaultValue: CGFloat = 1
+}
+
+public struct ClipPathKey: NodeValueKey {
+  public static let defaultValue: Path? = nil
 }

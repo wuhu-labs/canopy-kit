@@ -1,16 +1,21 @@
 import CoreGraphics
+import IdentifiedCollections
 
-// MARK: - Render Node
-
-/// A persistent node in the render tree. Either a leaf (custom drawing)
-/// or a container (layout + children).
+/// A persistent node in the render tree.
 public final class RenderNode {
   public enum Content {
-    case leaf(AnyDrawing)
+    case component(AnyComponent, RenderNode)
+    case primitive(Primitive)
     case container(AnyLayout, [RenderNode])
+
+    public static func leaf(_ drawing: AnyDrawing) -> Self {
+      .primitive(.customDrawing(drawing))
+    }
   }
 
-  public let nodeID: NodeID?
+  public let nodeID: NodeID
+
+  public var values: NodeValues
 
   public var content: Content {
     didSet {
@@ -18,54 +23,81 @@ public final class RenderNode {
     }
   }
 
+  public internal(set) var resolvedNode: ResolvedNode
+
   weak var parent: RenderNode?
 
-  // Layout cache — the last proposal this node was measured with,
-  // and the resulting size.
   public internal(set) var cachedSize: CGSize?
   public internal(set) var cachedProposal: ProposedSize?
-
-  /// Origin in parent-local coordinates, set by the parent's layout during measure.
   public internal(set) var localOrigin: CGPoint = .zero
-
-  /// Frame in document coordinates, assigned during assignFrames.
   public internal(set) var frame: CGRect = .zero
+  public internal(set) var primitiveCache: Any?
 
-  public init(_ content: Content, nodeID: NodeID? = nil) {
+  public init(
+    _ content: Content,
+    nodeID: NodeID,
+    values: NodeValues = NodeValues(),
+    resolvedNode: ResolvedNode
+  ) {
     self.nodeID = nodeID
+    self.values = values
     self.content = content
+    self.resolvedNode = resolvedNode
     updateChildParents(from: nil, to: content)
   }
 
-  // MARK: - Convenience constructors
-
-  public static func leaf(_ drawing: AnyDrawing, nodeID: NodeID? = nil) -> RenderNode {
-    RenderNode(.leaf(drawing), nodeID: nodeID)
+  public static func leaf(
+    _ drawing: AnyDrawing,
+    nodeID: NodeID? = nil,
+    values: NodeValues = NodeValues()
+  ) -> RenderNode {
+    let nodeID = nodeID ?? temporaryNodeID()
+    let resolved = ResolvedNode(
+      id: nodeID,
+      content: .primitive(.customDrawing(drawing)),
+      values: values
+    )
+    return RenderNode(
+      .primitive(.customDrawing(drawing)),
+      nodeID: nodeID,
+      values: values,
+      resolvedNode: resolved
+    )
   }
 
   public static func container(
     _ layout: AnyLayout,
     _ children: [RenderNode],
-    nodeID: NodeID? = nil
+    nodeID: NodeID? = nil,
+    values: NodeValues = NodeValues()
   ) -> RenderNode {
-    RenderNode(.container(layout, children), nodeID: nodeID)
+    let nodeID = nodeID ?? temporaryNodeID()
+    let resolved = ResolvedNode(
+      id: nodeID,
+      content: .layout(layout, IdentifiedArray(uniqueElements: children.map(\.resolvedNode))),
+      values: values
+    )
+    return RenderNode(
+      .container(layout, children),
+      nodeID: nodeID,
+      values: values,
+      resolvedNode: resolved
+    )
   }
-
-  // MARK: - Children
 
   public var children: [RenderNode] {
     switch content {
-    case .leaf: []
-    case let .container(_, children): children
+    case let .component(_, child):
+      [child]
+    case .primitive:
+      []
+    case let .container(_, children):
+      children
     }
   }
 
-  // MARK: - Cache invalidation
-
-  /// Invalidate this node's cached size and all ancestor caches to the root.
   public func invalidateLayout() {
     var node: RenderNode? = self
-
     while let current = node {
       current.cachedSize = nil
       current.cachedProposal = nil
@@ -73,71 +105,79 @@ public final class RenderNode {
     }
   }
 
-  /// Invalidate this node and all ancestors.
-  /// `ancestors` should be the path from root to this node (not including self).
   public static func invalidateUpward(_ ancestors: [RenderNode]) {
     ancestors.last?.invalidateLayout()
   }
 
   private func updateChildParents(from oldContent: Content?, to newContent: Content) {
-    if case let .container(_, oldChildren) = oldContent {
-      for child in oldChildren {
-        if child.parent === self {
-          child.parent = nil
-        }
+    switch oldContent {
+    case let .component(_, child):
+      if child.parent === self {
+        child.parent = nil
       }
+    case let .container(_, children):
+      for child in children where child.parent === self {
+        child.parent = nil
+      }
+    case .primitive, nil:
+      break
     }
 
-    if case let .container(_, newChildren) = newContent {
-      for child in newChildren {
+    switch newContent {
+    case let .component(_, child):
+      child.parent = self
+    case let .container(_, children):
+      for child in children {
         child.parent = self
       }
+    case .primitive:
+      break
     }
   }
 }
 
-// MARK: - Layout Engine
+private func temporaryNodeID() -> NodeID {
+  NodeID(rawValue: Int.random(in: 1 ... Int.max))
+}
 
 public extension RenderNode {
-  /// Full layout pass: measure with the given width, then assign frames.
   func layoutPass(width: CGFloat) {
     _ = measure(proposal: ProposedSize(width: width, height: nil))
     assignFrames(origin: .zero)
   }
 
-  /// Measure this node given a size proposal. Returns the computed size.
-  /// Uses cache when possible.
   func measure(proposal: ProposedSize) -> CGSize {
-    if let cached = cachedSize, cachedProposal == proposal {
-      return cached
+    if let cachedSize, cachedProposal == proposal {
+      return cachedSize
     }
 
     let size: CGSize
 
     switch content {
-    case var .leaf(drawing):
-      size = drawing.sizeThatFits(proposal: proposal)
-      // Write back the drawing (it may have mutated its cache).
-      content = .leaf(drawing)
+    case let .component(_, child):
+      child.localOrigin = .zero
+      size = child.measure(proposal: proposal)
+
+    case let .primitive(primitive):
+      size = measurePrimitive(primitive, proposal: proposal)
 
     case let .container(layout, children):
-      // Create measurable proxies — the layout decides what proposal each child gets.
       let subviews = children.map { child in
-        LayoutSubview { proposal in
-          child.measure(proposal: proposal)
-        }
+        LayoutSubview(
+          { proposal in
+            child.measure(proposal: proposal)
+          },
+          nodeValues: child.values
+        )
       }
-
       let result = layout.layout(subviews: subviews, proposal: proposal)
       precondition(
         result.placements.count == children.count,
         "Layout returned \(result.placements.count) placements for \(children.count) children."
       )
       size = result.size
-
-      // Store placements on child nodes.
-      for (i, child) in children.enumerated() {
-        child.localOrigin = result.placements[i].origin
+      for (index, child) in children.enumerated() {
+        child.localOrigin = result.placements[index].origin
       }
     }
 
@@ -146,38 +186,61 @@ public extension RenderNode {
     return size
   }
 
-  /// Assign absolute frames in document coordinates.
   func assignFrames(origin: CGPoint) {
     let size = cachedSize ?? .zero
     frame = CGRect(origin: origin, size: size)
 
-    for child in children {
-      let childOrigin = CGPoint(
-        x: origin.x + child.localOrigin.x,
-        y: origin.y + child.localOrigin.y
-      )
-      child.assignFrames(origin: childOrigin)
+    switch content {
+    case let .component(_, child):
+      child.assignFrames(origin: origin)
+
+    case .primitive:
+      break
+
+    case .container:
+      for child in children {
+        let childOrigin = CGPoint(
+          x: origin.x + child.localOrigin.x,
+          y: origin.y + child.localOrigin.y
+        )
+        child.assignFrames(origin: childOrigin)
+      }
+    }
+  }
+
+  private func measurePrimitive(_ primitive: Primitive, proposal: ProposedSize) -> CGSize {
+    switch primitive {
+    case let .shape(shape):
+      return shape.sizeThatFits(proposal: proposal)
+
+    case let .customDrawing(drawing):
+      if primitiveCache == nil {
+        primitiveCache = drawing.makeCache()
+      }
+      return drawing.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
     }
   }
 }
 
-// MARK: - Queries
-
 public extension RenderNode {
-  /// All leaf nodes in tree order.
   func leaves() -> [RenderNode] {
     switch content {
-    case .leaf: [self]
+    case let .component(_, child):
+      child.leaves()
+    case .primitive:
+      [self]
     case let .container(_, children):
       children.flatMap { $0.leaves() }
     }
   }
 
-  /// Leaf nodes whose frame intersects the given rect.
   func visibleLeaves(in rect: CGRect) -> [RenderNode] {
     guard frame.intersects(rect) else { return [] }
     switch content {
-    case .leaf: return [self]
+    case let .component(_, child):
+      return child.visibleLeaves(in: rect)
+    case .primitive:
+      return [self]
     case let .container(_, children):
       return children.flatMap { $0.visibleLeaves(in: rect) }
     }

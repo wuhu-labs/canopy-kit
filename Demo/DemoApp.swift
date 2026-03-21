@@ -11,7 +11,7 @@ struct WuhuUIDemoApp: App {
 }
 
 struct DemoRootView: View {
-  @State private var selection: DemoKind? = .staticMarkdown
+  @State private var selection: DemoKind? = .markdownStream
 
   var body: some View {
     NavigationSplitView {
@@ -31,6 +31,10 @@ struct DemoRootView: View {
         }
       }
       .navigationTitle((selection ?? .staticMarkdown).title)
+      .task {
+        try? await Task.sleep(for: .seconds(5))
+        exit(0)
+      }
     }
   }
 }

@@ -1,6 +1,9 @@
 import Observation
 import SwiftUI
 import WuhuUI
+import IdentifiedCollections
+
+// MARK: - Static Markdown Demo
 
 struct StaticMarkdownDemoView: View {
   var body: some View {
@@ -9,6 +12,8 @@ struct StaticMarkdownDemoView: View {
     )
   }
 }
+
+// MARK: - Reactive Feed Demo
 
 @Observable
 final class ReactiveFeedModel {
@@ -67,32 +72,118 @@ struct ReactiveFeedDemoView: View {
   }
 }
 
+struct ReactiveFeedComponent: Component {
+  let model: ReactiveFeedModel
+
+  func body() -> Node {
+    .layout(
+      AnyLayout(VStackLayout(spacing: 8)),
+      children: IdentifiedArray(
+        uniqueElements: model.paragraphs.map { paragraph in
+          IdentifiedNode.component(
+            key: paragraph.id,
+            AnyComponent(ParagraphCardComponent(paragraph: paragraph))
+          )
+        }
+      )
+    )
+  }
+}
+
+struct ParagraphCardComponent: Component, Equatable {
+  let paragraph: ReactiveFeedModel.Paragraph
+
+  func body() -> Node {
+    .layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: [
+        .drawing(
+          key: "label",
+          AnyDrawing(TextDrawing("Paragraph \(paragraph.id)", fontSize: 12))
+        ),
+        .drawing(
+          key: "text",
+          AnyDrawing(TextDrawing(paragraph.text, fontSize: 14))
+        ),
+        .drawing(
+          key: "rule",
+          AnyDrawing(RectDrawing(color: CGColor(gray: 0.88, alpha: 1), height: 1))
+        ),
+      ]
+    )
+  }
+}
+
+// MARK: - Markdown Stream Demo (Multi-Document)
+
+/// A single markdown document being streamed character by character.
 @Observable
-final class MarkdownStreamModel {
-  @ObservationIgnored private let fullMarkdownCharacters: [Character]
-  @ObservationIgnored private let initialCharacterCount: Int
+final class DocumentModel: Identifiable {
+  let id: Int
+  @ObservationIgnored let fullCharacters: [Character]
+  var visibleCharacterCount: Int
+  var visibleMarkdown: String
 
-  var visibleMarkdown = ""
-  var visibleCharacterCount = 0
-  var isStreaming = false
+  var isComplete: Bool { visibleCharacterCount >= fullCharacters.count }
 
-  init(multiplier: Int = 100, initialCharacterCount: Int = 22000) {
-    fullMarkdownCharacters = Array(makeStreamingMarkdownDocument(multiplier: multiplier))
-    self.initialCharacterCount = min(initialCharacterCount, fullMarkdownCharacters.count)
-    visibleCharacterCount = self.initialCharacterCount
-    visibleMarkdown = String(fullMarkdownCharacters.prefix(self.initialCharacterCount))
+  init(id: Int, markdown: String, prefillCount: Int = 0) {
+    self.id = id
+    self.fullCharacters = Array(markdown)
+    let clamped = min(prefillCount, fullCharacters.count)
+    self.visibleCharacterCount = clamped
+    self.visibleMarkdown = String(fullCharacters.prefix(clamped))
   }
 
-  var totalCharacterCount: Int {
-    fullMarkdownCharacters.count
+  /// Append the next batch of characters. Returns true if the document just completed.
+  func advance(count: Int = 5) -> Bool {
+    guard !isComplete else { return false }
+    let end = min(visibleCharacterCount + count, fullCharacters.count)
+    visibleMarkdown.append(contentsOf: fullCharacters[visibleCharacterCount..<end])
+    visibleCharacterCount = end
+    return isComplete
+  }
+}
+
+/// Top-level model: holds many documents, streams into the active one.
+@Observable
+final class AppModel {
+  let totalDocumentCount: Int
+  var documents: [DocumentModel] = []
+  var isStreaming = false
+
+  @ObservationIgnored private var nextDocumentIndex = 0
+
+  init(documentCount: Int = 100) {
+    self.totalDocumentCount = documentCount
+    // Pre-fill a batch of completed documents to simulate history
+    let prefillCount = max(0, documentCount - 5)
+    for i in 0..<prefillCount {
+      let markdown = makeDocumentMarkdown(index: i)
+      let doc = DocumentModel(id: i, markdown: markdown, prefillCount: markdown.count)
+      documents.append(doc)
+    }
+    // Create the first active document
+    if prefillCount < documentCount {
+      let doc = DocumentModel(id: prefillCount, markdown: makeDocumentMarkdown(index: prefillCount))
+      documents.append(doc)
+      nextDocumentIndex = prefillCount + 1
+    } else {
+      nextDocumentIndex = documentCount
+    }
+  }
+
+  var activeDocument: DocumentModel? {
+    documents.last { !$0.isComplete } ?? documents.last
   }
 
   var progressText: String {
-    "\(visibleCharacterCount) / \(totalCharacterCount) chars"
+    let completedDocs = documents.filter(\.isComplete).count
+    let active = activeDocument
+    let activeProgress = active.map { "\($0.visibleCharacterCount)/\($0.fullCharacters.count)" } ?? "done"
+    return "Doc \(completedDocs)/\(totalDocumentCount) | Active: \(activeProgress)"
   }
 
   func startStreaming() {
-    guard !isStreaming, visibleCharacterCount < totalCharacterCount else { return }
     isStreaming = true
   }
 
@@ -102,39 +193,100 @@ final class MarkdownStreamModel {
 
   func reset() {
     pauseStreaming()
-    visibleCharacterCount = initialCharacterCount
-    visibleMarkdown = String(fullMarkdownCharacters.prefix(initialCharacterCount))
+    // Reset all documents to prefilled state
+    documents.removeAll()
+    nextDocumentIndex = 0
+    let prefillCount = max(0, totalDocumentCount - 5)
+    for i in 0..<prefillCount {
+      let markdown = makeDocumentMarkdown(index: i)
+      let doc = DocumentModel(id: i, markdown: markdown, prefillCount: markdown.count)
+      documents.append(doc)
+    }
+    if prefillCount < totalDocumentCount {
+      let doc = DocumentModel(id: prefillCount, markdown: makeDocumentMarkdown(index: prefillCount))
+      documents.append(doc)
+      nextDocumentIndex = prefillCount + 1
+    } else {
+      nextDocumentIndex = totalDocumentCount
+    }
   }
 
-  func advanceOneCharacter() {
+  /// Called every tick. Advances the active document; if it finishes, starts a new one.
+  func tick() {
     guard isStreaming else { return }
-    guard visibleCharacterCount < totalCharacterCount else {
-      isStreaming = false
+
+    guard let active = documents.last, !active.isComplete else {
+      // No active document or last one is complete — try to start a new one
+      if nextDocumentIndex < totalDocumentCount {
+        let doc = DocumentModel(id: nextDocumentIndex, markdown: makeDocumentMarkdown(index: nextDocumentIndex))
+        documents.append(doc)
+        nextDocumentIndex += 1
+      } else {
+        isStreaming = false
+      }
       return
     }
 
-    visibleMarkdown.append(contentsOf: fullMarkdownCharacters[visibleCharacterCount..<visibleCharacterCount + 5])
-    visibleCharacterCount += 5
-
-    if visibleCharacterCount == totalCharacterCount {
+    let justCompleted = active.advance(count: 5)
+    if justCompleted && nextDocumentIndex < totalDocumentCount {
+      // Document finished — start the next one. This mutates AppModel.documents.
+      let doc = DocumentModel(id: nextDocumentIndex, markdown: makeDocumentMarkdown(index: nextDocumentIndex))
+      documents.append(doc)
+      nextDocumentIndex += 1
+    } else if justCompleted {
       isStreaming = false
     }
   }
 }
 
+// MARK: - Multi-Document Components
+
+/// Root component: observes AppModel, emits one child component per document.
+struct MultiDocumentComponent: Component {
+  let appModel: AppModel
+
+  func body() -> Node {
+    .layout(
+      AnyLayout(VStackLayout(spacing: 16)),
+      children: IdentifiedArray(
+        uniqueElements: appModel.documents.map { doc in
+          IdentifiedNode.component(
+            key: doc.id,
+            AnyComponent(
+              SingleDocumentComponent(document: doc),
+              isEquivalent: { lhs, rhs in lhs.document === rhs.document }
+            )
+          )
+        }
+      )
+    )
+  }
+}
+
+/// Per-document component: observes its DocumentModel's visibleMarkdown.
+struct SingleDocumentComponent: Component {
+  let document: DocumentModel
+
+  func body() -> Node {
+    MarkdownDocumentComponent(source: document.visibleMarkdown).body()
+  }
+}
+
+// MARK: - Markdown Stream Demo View
+
 struct MarkdownStreamDemoView: View {
-  @State private var model: MarkdownStreamModel
+  @State private var appModel: AppModel
   @State private var renderer: ComponentRenderer
   private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
   init() {
-    let model = MarkdownStreamModel()
-    _model = State(initialValue: model)
+    let appModel = AppModel(documentCount: 100)
+    _appModel = State(initialValue: appModel)
     _renderer = State(
       initialValue: ComponentRenderer(
         root: AnyComponent(
-          StreamingMarkdownComponent(model: model),
-          isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+          MultiDocumentComponent(appModel: appModel),
+          isEquivalent: { lhs, rhs in lhs.appModel === rhs.appModel }
         )
       )
     )
@@ -143,83 +295,33 @@ struct MarkdownStreamDemoView: View {
   var body: some View {
     VStack(spacing: 12) {
       HStack {
-        Text(model.progressText)
+        Text(appModel.progressText)
         Spacer()
-        Button(model.isStreaming ? "Pause" : "Start") { startPauseButtonTapped() }
+        Button(appModel.isStreaming ? "Pause" : "Start") { startPauseButtonTapped() }
         Button("Reset") { resetButtonTapped() }
       }
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      RenderTreeView(root: renderer.renderRoot, revision: renderer.revision)
+      RenderTreeView(root: renderer.resolvedRoot, revision: renderer.revision)
         .autoScrollWhenHeightChanges()
     }
     .onReceive(timer) { _ in
-      model.advanceOneCharacter()
+      appModel.tick()
     }
-    .task { model.startStreaming() }
+    .task { appModel.startStreaming() }
   }
 
   private func startPauseButtonTapped() {
-    if model.isStreaming {
-      model.pauseStreaming()
+    if appModel.isStreaming {
+      appModel.pauseStreaming()
     } else {
-      model.startStreaming()
+      appModel.startStreaming()
     }
   }
 
   private func resetButtonTapped() {
-    model.reset()
-    model.startStreaming()
-  }
-}
-
-struct StreamingMarkdownComponent: Component {
-  let model: MarkdownStreamModel
-
-  func body() -> ComponentBody {
-    MarkdownDocumentComponent(source: model.visibleMarkdown).body()
-  }
-}
-
-struct ReactiveFeedComponent: Component {
-  let model: ReactiveFeedModel
-
-  func body() -> ComponentBody {
-    .layoutNode(
-      key: "feed",
-      AnyLayout(VStackLayout(spacing: 8)),
-      children: model.paragraphs.map { paragraph in
-        .componentNode(
-          key: paragraph.id,
-          AnyComponent(ParagraphCardComponent(paragraph: paragraph))
-        )
-      }
-    )
-  }
-}
-
-struct ParagraphCardComponent: Component, Equatable {
-  let paragraph: ReactiveFeedModel.Paragraph
-
-  func body() -> ComponentBody {
-    .layoutNode(
-      key: "card",
-      AnyLayout(VStackLayout(spacing: 6)),
-      children: [
-        .drawingNode(
-          key: "label",
-          AnyDrawing(TextDrawing("Paragraph \(paragraph.id)", fontSize: 12))
-        ),
-        .drawingNode(
-          key: "text",
-          AnyDrawing(TextDrawing(paragraph.text, fontSize: 14))
-        ),
-        .drawingNode(
-          key: "rule",
-          AnyDrawing(RectDrawing(color: CGColor(gray: 0.88, alpha: 1), height: 1))
-        ),
-      ]
-    )
+    appModel.reset()
+    appModel.startStreaming()
   }
 }

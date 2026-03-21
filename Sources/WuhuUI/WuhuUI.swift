@@ -1,5 +1,5 @@
-// WuhuUI — Render Tree
+// WuhuUI — v2 node/runtime architecture
 //
-// RenderNode: persistent layout tree (leaf drawings + container layouts)
-// Layout engine: measure (top-down proposal, bottom-up sizes) + frame assignment
-// Renderer: CALayer projection of visible leaves
+// Node / ResolvedNode: component declaration layer and persistent resolved tree
+// RenderRuntime / ResolvedRenderNode: flat cache + immutable laid out render tree
+// RenderTreeView: viewport-aware visible-tree projection into SwiftUI
