@@ -75,7 +75,7 @@ struct SessionDemoView: View {
           isEquivalent: { lhs, rhs in lhs.model === rhs.model }
         )
       )
-      .autoScrollWhenHeightChanges()
+      .autoScrollWhenHeightChanges(model.streamingMessageID != nil)
     }
     .frame(maxWidth: 800)
     .onReceive(timer) { _ in
