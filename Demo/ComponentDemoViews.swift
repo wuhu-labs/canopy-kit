@@ -276,20 +276,10 @@ struct SingleDocumentComponent: Component {
 
 struct MarkdownStreamDemoView: View {
   @State private var appModel: AppModel
-  @State private var renderer: ComponentRenderer
   private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
   init() {
-    let appModel = AppModel(documentCount: 100)
-    _appModel = State(initialValue: appModel)
-    _renderer = State(
-      initialValue: ComponentRenderer(
-        root: AnyComponent(
-          MultiDocumentComponent(appModel: appModel),
-          isEquivalent: { lhs, rhs in lhs.appModel === rhs.appModel }
-        )
-      )
-    )
+    _appModel = State(initialValue: AppModel(documentCount: 100))
   }
 
   var body: some View {
@@ -303,8 +293,13 @@ struct MarkdownStreamDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      RenderTreeView(root: renderer.resolvedRoot, revision: renderer.revision)
-        .autoScrollWhenHeightChanges()
+      ComponentTreeView(
+        root: AnyComponent(
+          MultiDocumentComponent(appModel: appModel),
+          isEquivalent: { lhs, rhs in lhs.appModel === rhs.appModel }
+        )
+      )
+      .autoScrollWhenHeightChanges()
     }
     .onReceive(timer) { _ in
       appModel.tick()

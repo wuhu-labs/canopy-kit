@@ -68,7 +68,7 @@ struct TapGestureDemoComponent: Component {
             children: [
               .drawing(
                 key: "bg",
-                AnyDrawing(RectDrawing(color: color, height: 6))
+                AnyDrawing(RectDrawing(color: color, height: 40))
               ),
               .drawing(
                 key: "label",
