@@ -30,6 +30,8 @@ struct DemoRootView: View {
           MarkdownStreamDemoView()
         case .tapGesture:
           TapGestureDemoView()
+        case .sessionView:
+          SessionDemoView()
         }
       }
       .navigationTitle((selection ?? .staticMarkdown).title)
@@ -42,6 +44,7 @@ enum DemoKind: String, CaseIterable, Identifiable {
   case reactiveFeed
   case markdownStream
   case tapGesture
+  case sessionView
 
   var id: Self { self }
 
@@ -55,6 +58,8 @@ enum DemoKind: String, CaseIterable, Identifiable {
       "Markdown Stream"
     case .tapGesture:
       "Tap Gesture"
+    case .sessionView:
+      "Session View"
     }
   }
 }
