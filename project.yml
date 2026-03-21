@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.wuhu
   deploymentTarget:
     macOS: "14.0"
+    iOS: "17.0"
   createIntermediateGroups: true
 settings:
   SWIFT_VERSION: "6.0"
@@ -25,3 +26,19 @@ targets:
       INFOPLIST_KEY_NSMainStoryboardFile: ""
       INFOPLIST_KEY_NSPrincipalClass: NSApplication
       GENERATE_INFOPLIST_FILE: true
+  CanopyKitDemo-iOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: Demo
+        excludes:
+          - Package.swift
+    dependencies:
+      - package: CanopyKit
+        product: CanopyKit
+    settings:
+      SWIFT_TREAT_WARNINGS_AS_ERRORS: true
+      GENERATE_INFOPLIST_FILE: true
+      INFOPLIST_KEY_UILaunchScreen_Generation: true
+      INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+      INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

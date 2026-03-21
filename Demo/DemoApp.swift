@@ -5,7 +5,9 @@ struct CanopyKitDemoApp: App {
   var body: some Scene {
     WindowGroup {
       DemoRootView()
+        #if os(macOS)
         .frame(minWidth: 720, minHeight: 540)
+        #endif
     }
   }
 }
