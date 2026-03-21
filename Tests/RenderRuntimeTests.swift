@@ -96,8 +96,7 @@ private struct TrackingDrawing: CustomDrawing {
 
     let renderRoot = runtime.layout(
       root: root,
-      proposal: ProposedSize(width: 80, height: nil),
-      viewport: CGRect(x: 0, y: 0, width: 80, height: 80)
+      proposal: ProposedSize(width: 80, height: nil)
     )
 
     let leaf = try #require(renderRoot.leaves().first)
@@ -201,8 +200,7 @@ private struct TrackingDrawing: CustomDrawing {
 
     let initialRenderRoot = runtime.layout(
       root: initialRoot,
-      proposal: ProposedSize(width: 100, height: nil),
-      viewport: CGRect(x: 0, y: 0, width: 100, height: 200)
+      proposal: ProposedSize(width: 100, height: nil)
     )
     let initialNestedStack = try #require(findRenderNode(in: initialRenderRoot, id: NodeID(rawValue: 4)))
     let initialNestedLeafD = try #require(findRenderNode(in: initialRenderRoot, id: NodeID(rawValue: 5)))
@@ -222,8 +220,7 @@ private struct TrackingDrawing: CustomDrawing {
 
     let updatedRenderRoot = runtime.layout(
       root: updatedRoot,
-      proposal: ProposedSize(width: 100, height: nil),
-      viewport: CGRect(x: 0, y: 0, width: 100, height: 200)
+      proposal: ProposedSize(width: 100, height: nil)
     )
     let updatedNestedStack = try #require(findRenderNode(in: updatedRenderRoot, id: NodeID(rawValue: 4)))
     let updatedNestedLeafD = try #require(findRenderNode(in: updatedRenderRoot, id: NodeID(rawValue: 5)))

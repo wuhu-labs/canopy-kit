@@ -236,8 +236,7 @@ struct CountingLeafComponent: Component {
     #expect(
       runtime.layout(
         root: renderer.resolvedRoot,
-        proposal: ProposedSize(width: 200, height: nil),
-        viewport: CGRect(x: 0, y: 0, width: 200, height: 400)
+        proposal: ProposedSize(width: 200, height: nil)
       ).leaves().count == 2
     )
 
@@ -251,8 +250,7 @@ struct CountingLeafComponent: Component {
     #expect(
       runtime.layout(
         root: renderer.resolvedRoot,
-        proposal: ProposedSize(width: 200, height: nil),
-        viewport: CGRect(x: 0, y: 0, width: 200, height: 400)
+        proposal: ProposedSize(width: 200, height: nil)
       ).leaves().count == 4
     )
   }

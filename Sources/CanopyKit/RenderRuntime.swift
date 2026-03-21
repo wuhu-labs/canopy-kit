@@ -151,16 +151,24 @@ public final class RenderRuntime {
     return size
   }
 
+  public func layout(
+    root: ResolvedNode,
+    proposal: ProposedSize
+  ) -> ResolvedRenderNode {
+    reconcile(with: root)
+    let signpostID = OSSignpostID(log: canopyLog)
+    os_signpost(.begin, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
+    let result = layout(node: root, proposal: proposal, origin: .zero)
+    os_signpost(.end, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
+    return result
+  }
+
   public func visibleView(
     root: ResolvedNode,
     proposal: ProposedSize,
     viewport: CGRect
   ) -> ResolvedRenderNodeView? {
-    reconcile(with: root)
-    let signpostID = OSSignpostID(log: canopyLog)
-    os_signpost(.begin, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
-    let renderRoot = layout(node: root, proposal: proposal, origin: .zero)
-    os_signpost(.end, log: canopyLog, name: "RenderRuntime.layout", signpostID: signpostID)
+    let renderRoot = layout(root: root, proposal: proposal)
     return ResolvedRenderNodeView(node: renderRoot, viewport: viewport)
   }
 

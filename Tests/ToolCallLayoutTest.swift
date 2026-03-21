@@ -68,8 +68,7 @@ import Testing
     // Check all leaf frames in collapsed state
     let renderRoot = runtime.layout(
       root: renderer.resolvedRoot,
-      proposal: proposal,
-      viewport: CGRect(x: 0, y: 0, width: width, height: 2000)
+      proposal: proposal
     )
 
     func checkFrames(_ node: ResolvedRenderNode, depth: Int = 0) {
