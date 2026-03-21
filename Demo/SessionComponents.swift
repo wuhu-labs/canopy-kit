@@ -1,3 +1,4 @@
+import CanopyKit
 import CoreGraphics
 import CoreText
 import Foundation
@@ -14,14 +15,14 @@ import AppKit
 /// Per-tool-call observable model. Holds mutable `isExpanded` state
 /// so tapping a tool call only re-renders that one component.
 @Observable
-public final class ChatToolCallModel: Identifiable {
-  public let id: String
-  public var name: String
-  public var arguments: String
-  public var result: String
-  public var isExpanded: Bool
+final class ChatToolCallModel: Identifiable {
+  let id: String
+  var name: String
+  var arguments: String
+  var result: String
+  var isExpanded: Bool
 
-  public init(
+  init(
     id: String,
     name: String,
     arguments: String,
@@ -37,12 +38,12 @@ public final class ChatToolCallModel: Identifiable {
 }
 
 /// Image attachment — value type is fine, these don't mutate.
-public struct ChatImageAttachment: Identifiable, Equatable, Sendable {
-  public let id: String
-  public var blobURI: String
-  public var mimeType: String
+struct ChatImageAttachment: Identifiable, Equatable, Sendable {
+  let id: String
+  var blobURI: String
+  var mimeType: String
 
-  public init(id: String, blobURI: String, mimeType: String) {
+  init(id: String, blobURI: String, mimeType: String) {
     self.id = id
     self.blobURI = blobURI
     self.mimeType = mimeType
@@ -53,21 +54,21 @@ public struct ChatImageAttachment: Identifiable, Equatable, Sendable {
 /// so mutations (e.g. streaming content append) only dirty that one
 /// message's component — the root array is untouched.
 @Observable
-public final class ChatMessageModel: Identifiable {
-  public let id: String
-  public var role: Role
-  public var author: String?
-  public var content: String
-  public var images: [ChatImageAttachment]
-  public var timestamp: Date
-  public var toolCalls: [ChatToolCallModel]
+final class ChatMessageModel: Identifiable {
+  let id: String
+  var role: Role
+  var author: String?
+  var content: String
+  var images: [ChatImageAttachment]
+  var timestamp: Date
+  var toolCalls: [ChatToolCallModel]
 
   public enum Role {
     case user
     case assistant
   }
 
-  public init(
+  init(
     id: String,
     role: Role,
     author: String? = nil,
@@ -95,15 +96,15 @@ public final class ChatMessageModel: Identifiable {
 /// finalized message. The `streamingMessageID` tracks which message
 /// (if any) is currently being streamed into.
 @Observable
-public final class ChatSessionModel {
-  public var messages: [ChatMessageModel] = []
-  public var streamingMessageID: String?
-  public var isRunning: Bool = false
+final class ChatSessionModel {
+  var messages: [ChatMessageModel] = []
+  var streamingMessageID: String?
+  var isRunning: Bool = false
 
-  public init() {}
+  init() {}
 
   /// The message currently being streamed, if any.
-  public var streamingMessage: ChatMessageModel? {
+  var streamingMessage: ChatMessageModel? {
     guard let id = streamingMessageID else { return nil }
     return messages.last { $0.id == id }
   }
@@ -111,7 +112,7 @@ public final class ChatSessionModel {
   /// Begin streaming: creates a new assistant message and marks it as
   /// the streaming target. Returns the model for direct mutation.
   @discardableResult
-  public func beginStreaming(id: String = "__streaming-\(UUID().uuidString)") -> ChatMessageModel {
+  func beginStreaming(id: String = "__streaming-\(UUID().uuidString)") -> ChatMessageModel {
     let message = ChatMessageModel(
       id: id,
       role: .assistant,
@@ -126,7 +127,7 @@ public final class ChatSessionModel {
 
   /// Finalize streaming: clears the streaming marker but keeps the
   /// message in the array as a normal assistant message.
-  public func finalizeStreaming() {
+  func finalizeStreaming() {
     streamingMessageID = nil
     isRunning = false
   }
@@ -163,14 +164,14 @@ private let timestampFormatter: DateFormatter = {
 /// appended or removed the root re-evaluates, but each child component
 /// is pointer-compared (single class field → O(1)) so unchanged messages
 /// are skipped entirely.
-public struct SessionRootComponent: Component {
-  public let model: ChatSessionModel
+struct SessionRootComponent: Component {
+  let model: ChatSessionModel
 
-  public init(model: ChatSessionModel) {
+  init(model: ChatSessionModel) {
     self.model = model
   }
 
-  public func body() -> Node {
+  func body() -> Node {
     let streamingID = model.streamingMessageID
     let isRunning = model.isRunning
 
@@ -547,14 +548,14 @@ struct ImagePlaceholderComponent: Component, Equatable {
 
 /// Parses markdown source into a CanopyKit tree with rich inline
 /// rendering via NSAttributedString (bold, italic, code, links).
-public struct RichMarkdownComponent: Component, Equatable {
-  public var source: String
+struct RichMarkdownComponent: Component, Equatable {
+  var source: String
 
-  public init(source: String) {
+  init(source: String) {
     self.source = source
   }
 
-  public func body() -> Node {
+  func body() -> Node {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 

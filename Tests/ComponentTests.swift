@@ -155,69 +155,6 @@ struct CountingLeafComponent: Component {
     }
   }
 
-  @Test func markdownComponentPreservesQuoteAndNestedListStructure() {
-    let source = """
-    # Title
-
-    > quoted intro
-    >
-    > - nested one
-    > - nested two
-    """
-
-    let root = ComponentResolver.resolve(AnyComponent(MarkdownDocumentComponent(source: source)))
-
-    guard case let .component(_, documentNode) = root.content else {
-      Issue.record("Expected markdown root wrapper")
-      return
-    }
-    guard case let .layout(_, blocks) = documentNode.content else {
-      Issue.record("Expected markdown document body to be a layout")
-      return
-    }
-
-    #expect(blocks.count == 2)
-
-    // Each block is now a component; unwrap it
-    guard case let .component(_, blockQuoteInner) = blocks[1].content else {
-      Issue.record("Expected block quote to resolve as a component")
-      return
-    }
-    guard case let .layout(_, quoteChildren) = blockQuoteInner.content else {
-      Issue.record("Expected block quote body to be a layout")
-      return
-    }
-    #expect(quoteChildren.count == 2)
-
-    guard case let .layout(_, barChildren) = quoteChildren[0].content else {
-      Issue.record("Expected block quote bar wrapper")
-      return
-    }
-    #expect(barChildren.count == 1)
-
-    guard case let .layout(_, insetChildren) = quoteChildren[1].content else {
-      Issue.record("Expected block quote content inset")
-      return
-    }
-    #expect(insetChildren.count == 1)
-
-    guard case let .layout(_, quoteContentChildren) = insetChildren[0].content else {
-      Issue.record("Expected block quote content stack")
-      return
-    }
-    #expect(quoteContentChildren.count == 2)
-
-    // Nested list items are now components too; unwrap the list component first
-    guard case let .component(_, listInner) = quoteContentChildren[1].content else {
-      Issue.record("Expected nested quote list to be a component")
-      return
-    }
-    guard case let .layout(_, quoteListChildren) = listInner.content else {
-      Issue.record("Expected nested quote list body to be a layout")
-      return
-    }
-    #expect(quoteListChildren.count == 2)
-  }
 }
 
 @MainActor

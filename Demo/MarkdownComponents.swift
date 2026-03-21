@@ -1,17 +1,18 @@
+import CanopyKit
 import CoreGraphics
 import IdentifiedCollections
 import Markdown
 
 // MARK: - Document Component
 
-public struct MarkdownDocumentComponent: Component, Equatable {
-  public var source: String
+struct MarkdownDocumentComponent: Component, Equatable {
+  var source: String
 
-  public init(source: String) {
+  init(source: String) {
     self.source = source
   }
 
-  public func body() -> Node {
+  func body() -> Node {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 
