@@ -71,8 +71,7 @@ struct SessionDemoView: View {
 
       ComponentTreeView(
         root: AnyComponent(
-          SessionRootComponent(model: model),
-          isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+          SessionRootComponent(model: model)
         )
       )
       .autoScrollWhenHeightChanges(model.streamingMessageID != nil)

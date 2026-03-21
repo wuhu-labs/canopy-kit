@@ -55,8 +55,7 @@ struct ReactiveFeedDemoView: View {
 
       ComponentTreeView(
         root: AnyComponent(
-          ReactiveFeedComponent(model: model),
-          isEquivalent: { lhs, rhs in lhs.model === rhs.model }
+          ReactiveFeedComponent(model: model)
         )
       )
       .autoScrollWhenHeightChanges()
@@ -260,8 +259,7 @@ struct MultiDocumentComponent: Component {
           IdentifiedNode.component(
             key: doc.id,
             AnyComponent(
-              SingleDocumentComponent(document: doc),
-              isEquivalent: { lhs, rhs in lhs.document === rhs.document }
+              SingleDocumentComponent(document: doc)
             )
           )
         }
@@ -302,8 +300,7 @@ struct MarkdownStreamDemoView: View {
 
       ComponentTreeView(
         root: AnyComponent(
-          MultiDocumentComponent(appModel: appModel),
-          isEquivalent: { lhs, rhs in lhs.appModel === rhs.appModel }
+          MultiDocumentComponent(appModel: appModel)
         )
       )
       .autoScrollWhenHeightChanges()
