@@ -14,11 +14,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build library
+      - name: Build library (macOS)
         run: swift build -Xswiftc -warnings-as-errors
 
       - name: Run tests
         run: swift test -Xswiftc -warnings-as-errors
+
+      - name: Build library (iOS)
+        run: >
+          xcodebuild build
+          -scheme CanopyKit
+          -destination 'generic/platform=iOS'
+          CODE_SIGN_IDENTITY=""
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGNING_ALLOWED=NO
+          -quiet
 
       - name: Generate Xcode project
         run: xcodegen generate
@@ -29,6 +39,17 @@ jobs:
           -workspace CanopyKit.xcworkspace
           -scheme CanopyKitDemo
           -destination 'platform=macOS'
+          CODE_SIGN_IDENTITY=""
+          CODE_SIGNING_REQUIRED=NO
+          CODE_SIGNING_ALLOWED=NO
+          -quiet
+
+      - name: Build demo (iOS)
+        run: >
+          xcodebuild build
+          -workspace CanopyKit.xcworkspace
+          -scheme CanopyKitDemo-iOS
+          -destination 'generic/platform=iOS'
           CODE_SIGN_IDENTITY=""
           CODE_SIGNING_REQUIRED=NO
           CODE_SIGNING_ALLOWED=NO
