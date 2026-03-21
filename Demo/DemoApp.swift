@@ -11,14 +11,14 @@ struct CanopyKitDemoApp: App {
 }
 
 struct DemoRootView: View {
-  @State private var selection: DemoKind? = .markdownStream
+  @State private var selection: DemoKind? = .staticMarkdown
 
   var body: some View {
     NavigationSplitView {
       List(DemoKind.allCases, selection: $selection) { demo in
         Text(demo.title)
       }
-      .navigationTitle("WuhuUI")
+      .navigationTitle("CanopyKit")
     } detail: {
       Group {
         switch selection ?? .staticMarkdown {
@@ -28,13 +28,11 @@ struct DemoRootView: View {
           ReactiveFeedDemoView()
         case .markdownStream:
           MarkdownStreamDemoView()
+        case .tapGesture:
+          TapGestureDemoView()
         }
       }
       .navigationTitle((selection ?? .staticMarkdown).title)
-      .task {
-        try? await Task.sleep(for: .seconds(5))
-        exit(0)
-      }
     }
   }
 }
@@ -43,6 +41,7 @@ enum DemoKind: String, CaseIterable, Identifiable {
   case staticMarkdown
   case reactiveFeed
   case markdownStream
+  case tapGesture
 
   var id: Self { self }
 
@@ -54,6 +53,8 @@ enum DemoKind: String, CaseIterable, Identifiable {
       "Reactive Feed"
     case .markdownStream:
       "Markdown Stream"
+    case .tapGesture:
+      "Tap Gesture"
     }
   }
 }
