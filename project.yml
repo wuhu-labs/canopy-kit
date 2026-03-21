@@ -21,6 +21,7 @@ targets:
       - package: CanopyKit
         product: CanopyKit
     settings:
+      SWIFT_TREAT_WARNINGS_AS_ERRORS: true
       INFOPLIST_KEY_NSMainStoryboardFile: ""
       INFOPLIST_KEY_NSPrincipalClass: NSApplication
       GENERATE_INFOPLIST_FILE: true
