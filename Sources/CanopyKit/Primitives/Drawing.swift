@@ -4,11 +4,13 @@ import CoreGraphics
 
 public protocol CustomDrawing {
   associatedtype Cache
+  associatedtype Commitment
 
   func makeCache() -> Cache
   func updateCache(_ cache: inout Cache)
   func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize
-  func draw(in context: CGContext, bounds: CGRect, cache: Cache)
+  func makeCommitment(in bounds: CGRect, cache: Cache) -> Commitment
+  func draw(in context: CGContext, commitment: Commitment)
 }
 
 public extension CustomDrawing {
@@ -38,8 +40,12 @@ public struct AnyDrawing: @unchecked Sendable {
     drawingSizeThatFits(drawing: value, proposal: proposal, cache: &cache)
   }
 
-  func draw(in context: CGContext, bounds: CGRect, cache: Any) {
-    drawingDraw(drawing: value, in: context, bounds: bounds, cache: cache)
+  func makeCommitment(in bounds: CGRect, cache: Any) -> Any {
+    drawingMakeCommitment(drawing: value, in: bounds, cache: cache)
+  }
+
+  func draw(in context: CGContext, commitment: Any) {
+    drawingDraw(drawing: value, in: context, commitment: commitment)
   }
 
   func isEquivalent(to other: AnyDrawing) -> Bool {
@@ -68,7 +74,12 @@ private func drawingSizeThatFits<D: CustomDrawing>(drawing: D, proposal: Propose
   return size
 }
 
-private func drawingDraw<D: CustomDrawing>(drawing: D, in context: CGContext, bounds: CGRect, cache: Any) {
+private func drawingMakeCommitment<D: CustomDrawing>(drawing: D, in bounds: CGRect, cache: Any) -> Any {
   let typedCache = cache as! D.Cache
-  drawing.draw(in: context, bounds: bounds, cache: typedCache)
+  return drawing.makeCommitment(in: bounds, cache: typedCache)
+}
+
+private func drawingDraw<D: CustomDrawing>(drawing: D, in context: CGContext, commitment: Any) {
+  let typedCommitment = commitment as! D.Commitment
+  drawing.draw(in: context, commitment: typedCommitment)
 }

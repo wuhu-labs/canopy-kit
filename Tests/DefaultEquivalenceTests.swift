@@ -46,6 +46,7 @@ private struct SemanticDrawing: CustomDrawing, Equatable {
   }
 
   struct Cache {}
+  typealias Commitment = CGRect
 
   func makeCache() -> Cache {
     Cache()
@@ -55,7 +56,11 @@ private struct SemanticDrawing: CustomDrawing, Equatable {
     CGSize(width: semanticID, height: 20)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 private struct SemanticShape: ShapePrimitive, Equatable {

@@ -30,6 +30,16 @@ public struct TextDrawing: CustomDrawing {
     var typesetter: CTTypesetter
   }
 
+  public struct Commitment {
+    var bounds: CGRect
+    var lines: [Line]
+  }
+
+  public struct Line {
+    var line: CTLine
+    var position: CGPoint
+  }
+
   public func makeCache() -> Cache {
     let drawingAttributedString = attributedString as NSAttributedString
     let layoutAttributedString = Self.layoutAttributedString(from: drawingAttributedString)
@@ -83,16 +93,11 @@ public struct TextDrawing: CustomDrawing {
 
   // MARK: - Draw
 
-  public func draw(in context: CGContext, bounds: CGRect, cache: Cache) {
+  public func makeCommitment(in bounds: CGRect, cache: Cache) -> Commitment {
     let length = cache.drawingAttributedString.length
     var offset = 0
-    // CoreText draws with origin at bottom-left. We work top-down.
-    // Flip the context.
-    context.saveGState()
-    context.translateBy(x: bounds.origin.x, y: bounds.origin.y + bounds.height)
-    context.scaleBy(x: 1, y: -1)
-
     var y: CGFloat = 0
+    var lines: [Line] = []
 
     while offset < length {
       let count = CTTypesetterSuggestLineBreak(cache.typesetter, offset, Double(bounds.width))
@@ -108,11 +113,28 @@ public struct TextDrawing: CustomDrawing {
       CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
 
       y += ascent
-      context.textPosition = CGPoint(x: 0, y: bounds.height - y)
-      CTLineDraw(line, context)
+      lines.append(Line(line: line, position: CGPoint(x: 0, y: bounds.height - y)))
       y += descent + leading
 
       offset += count
+    }
+
+    return Commitment(bounds: bounds, lines: lines)
+  }
+
+  public func draw(in context: CGContext, commitment: Commitment) {
+    // CoreText draws with origin at bottom-left. We work top-down.
+    // Flip the context.
+    context.saveGState()
+    context.translateBy(
+      x: commitment.bounds.origin.x,
+      y: commitment.bounds.origin.y + commitment.bounds.height
+    )
+    context.scaleBy(x: 1, y: -1)
+
+    for line in commitment.lines {
+      context.textPosition = line.position
+      CTLineDraw(line.line, context)
     }
 
     context.restoreGState()

@@ -12,6 +12,7 @@ private struct FixedSizeViewRepresentable: CustomViewRepresentable {
   var label: String
 
   struct Cache {}
+  typealias Commitment = CGRect
 
   func makeCache() -> Cache {
     Cache()
@@ -23,7 +24,11 @@ private struct FixedSizeViewRepresentable: CustomViewRepresentable {
     return CGSize(width: w, height: h)
   }
 
-  func makeView(cache _: Cache) -> some View {
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func makeView(commitment _: CGRect) -> some View {
     Text(label)
   }
 }
@@ -40,6 +45,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
   struct Cache {
     var token: Int
   }
+  typealias Commitment = CGRect
 
   func makeCache() -> Cache {
     recorder.makeCount += 1
@@ -55,7 +61,11 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
     CGSize(width: 100, height: 20)
   }
 
-  func makeView(cache _: Cache) -> some View {
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func makeView(commitment _: CGRect) -> some View {
     Text("token")
   }
 }
@@ -90,6 +100,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
     }
 
     #expect(commitment.primitive.isEquivalent(to: .view(representable)))
+    #expect(commitment.value as? CGRect == CGRect(x: 0, y: 0, width: 120, height: 30))
     #expect(leaf.frame.size.width == 120)
     #expect(leaf.frame.size.height == 30)
   }

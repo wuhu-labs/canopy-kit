@@ -156,7 +156,6 @@ private struct PrimitiveCanvas: View {
 
   var body: some View {
     let representable = commitment.primitive.viewRepresentable
-    let cache = commitment.storedCache ?? representable.makeCache()
-    representable.makeView(cache: cache)
+    representable.makeView(commitment: commitment.value)
   }
 }

@@ -13,6 +13,7 @@ struct ImageViewRepresentable: CustomViewRepresentable, Equatable {
   var color: Color
 
   struct Cache {}
+  typealias Commitment = CGRect
 
   func makeCache() -> Cache {
     Cache()
@@ -24,7 +25,11 @@ struct ImageViewRepresentable: CustomViewRepresentable, Equatable {
     return CGSize(width: w, height: h)
   }
 
-  func makeView(cache _: Cache) -> some View {
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func makeView(commitment _: CGRect) -> some View {
     Image(systemName: systemName)
       .resizable()
       .scaledToFit()

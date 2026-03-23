@@ -5,7 +5,7 @@ import SwiftUI
 
 public struct PrimitiveCommitment: @unchecked Sendable {
   let primitive: Primitive
-  let storedCache: Any?
+  let value: Any
 }
 
 public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
@@ -283,8 +283,8 @@ public final class RenderRuntime {
     proposal: ProposedSize,
     origin: CGPoint
   ) -> ResolvedRenderNode {
-    var entry = cache[node.id] ?? CacheEntry()
     let size = measure(node: node, proposal: proposal)
+    var entry = cache[node.id] ?? CacheEntry()
     let frame = CGRect(origin: origin, size: size)
 
     if let existing = entry.lastResolvedRenderNode,
@@ -353,6 +353,7 @@ public final class RenderRuntime {
     case let .primitive(primitive):
       let commitment = makeCommitment(
         primitive,
+        size: size,
         entry: &entry
       )
       renderNode = ResolvedRenderNode(
@@ -389,11 +390,15 @@ public final class RenderRuntime {
 
   private func makeCommitment(
     _ primitive: Primitive,
+    size: CGSize,
     entry: inout CacheEntry
   ) -> PrimitiveCommitment {
     let commitment = PrimitiveCommitment(
       primitive: primitive,
-      storedCache: entry.preparationCache
+      value: primitive.viewRepresentable.makeCommitment(
+        in: CGRect(origin: .zero, size: size),
+        cache: entry.preparationCache!
+      )
     )
     entry.commitment = commitment
     return commitment

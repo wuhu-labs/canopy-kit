@@ -10,13 +10,15 @@ import SwiftUI
 /// `sizeThatFits` — but replaces the `draw` method with ``makeView``.
 public protocol CustomViewRepresentable {
   associatedtype Cache
+  associatedtype Commitment
   associatedtype Body: View
 
   func makeCache() -> Cache
   func updateCache(_ cache: inout Cache)
   func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize
+  func makeCommitment(in bounds: CGRect, cache: Cache) -> Commitment
   @MainActor
-  func makeView(cache: Cache) -> Body
+  func makeView(commitment: Commitment) -> Body
 }
 
 public extension CustomViewRepresentable {
@@ -46,9 +48,13 @@ public struct AnyViewRepresentable: @unchecked Sendable {
     _sizeThatFits(representable: value, proposal: proposal, cache: &cache)
   }
 
+  func makeCommitment(in bounds: CGRect, cache: Any) -> Any {
+    _makeCommitment(representable: value, in: bounds, cache: cache)
+  }
+
   @MainActor
-  func makeView(cache: Any) -> AnyView {
-    _makeView(representable: value, cache: cache)
+  func makeView(commitment: Any) -> AnyView {
+    _makeView(representable: value, commitment: commitment)
   }
 
   func isEquivalent(to other: AnyViewRepresentable) -> Bool {
@@ -100,17 +106,27 @@ private func _sizeThatFits<V: CustomViewRepresentable>(
 @MainActor
 private func _makeView<V: CustomViewRepresentable>(
   representable: V,
-  cache: Any
+  commitment: Any
 ) -> AnyView {
-  let typedCache = cache as! V.Cache
-  let view = representable.makeView(cache: typedCache)
+  let typedCommitment = commitment as! V.Commitment
+  let view = representable.makeView(commitment: typedCommitment)
   return AnyView(view)
+}
+
+private func _makeCommitment<V: CustomViewRepresentable>(
+  representable: V,
+  in bounds: CGRect,
+  cache: Any
+) -> Any {
+  let typedCache = cache as! V.Cache
+  return representable.makeCommitment(in: bounds, cache: typedCache)
 }
 
 private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
   let shape: AnyShape
 
   struct Cache {}
+  typealias Commitment = Path
 
   func makeCache() -> Cache {
     Cache()
@@ -120,8 +136,12 @@ private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
     shape.sizeThatFits(proposal: proposal)
   }
 
-  func makeView(cache _: Cache) -> some View {
-    ShapePrimitiveView(shape: shape)
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> Path {
+    shape.path(in: bounds)
+  }
+
+  func makeView(commitment: Path) -> some View {
+    commitment
   }
 
   static func == (lhs: Self, rhs: Self) -> Bool {
@@ -129,37 +149,30 @@ private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
   }
 }
 
-private struct ShapePrimitiveView: View {
-  let shape: AnyShape
-
-  var body: some View {
-    GeometryReader { proxy in
-      shape.path(in: CGRect(origin: .zero, size: proxy.size))
-    }
-  }
-}
-
 private struct DrawingViewRepresentable: CustomViewRepresentable, Equatable {
+  typealias Cache = Any
+  typealias Commitment = Any
+
   let drawing: AnyDrawing
 
-  struct Cache {
-    var drawingCache: Any
+  func makeCache() -> Any {
+    drawing.makeCache()
   }
 
-  func makeCache() -> Cache {
-    Cache(drawingCache: drawing.makeCache())
+  func updateCache(_ cache: inout Any) {
+    drawing.updateCache(cache: &cache)
   }
 
-  func updateCache(_ cache: inout Cache) {
-    drawing.updateCache(cache: &cache.drawingCache)
+  func sizeThatFits(proposal: ProposedSize, cache: inout Any) -> CGSize {
+    drawing.sizeThatFits(proposal: proposal, cache: &cache)
   }
 
-  func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize {
-    drawing.sizeThatFits(proposal: proposal, cache: &cache.drawingCache)
+  func makeCommitment(in bounds: CGRect, cache: Any) -> Any {
+    drawing.makeCommitment(in: bounds, cache: cache)
   }
 
-  func makeView(cache: Cache) -> some View {
-    DrawingPrimitiveView(drawing: drawing, storedCache: cache.drawingCache)
+  func makeView(commitment: Any) -> some View {
+    DrawingPrimitiveView(drawing: drawing, commitment: commitment)
   }
 
   static func == (lhs: Self, rhs: Self) -> Bool {
@@ -169,15 +182,14 @@ private struct DrawingViewRepresentable: CustomViewRepresentable, Equatable {
 
 private struct DrawingPrimitiveView: View {
   let drawing: AnyDrawing
-  let storedCache: Any
+  let commitment: Any
 
   var body: some View {
     Canvas { context, size in
       context.withCGContext { cgContext in
         drawing.draw(
           in: cgContext,
-          bounds: CGRect(origin: .zero, size: size),
-          cache: storedCache
+          commitment: commitment
         )
       }
     }

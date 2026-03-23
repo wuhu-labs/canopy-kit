@@ -863,6 +863,8 @@ private func reusePrimitiveNode(
 /// before the first `refresh()` replaces it.
 private struct PlaceholderDrawing: CustomDrawing {
   struct Cache {}
+  typealias Commitment = CGRect
+
   func makeCache() -> Cache {
     Cache()
   }
@@ -871,5 +873,9 @@ private struct PlaceholderDrawing: CustomDrawing {
     .zero
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }

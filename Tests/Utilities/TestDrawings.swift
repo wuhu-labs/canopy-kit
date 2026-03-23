@@ -10,6 +10,8 @@ struct FixedSizeDrawing: CustomDrawing {
   var height: CGFloat
 
   struct Cache {}
+  typealias Commitment = CGRect
+
   func makeCache() -> Cache {
     Cache()
   }
@@ -20,7 +22,11 @@ struct FixedSizeDrawing: CustomDrawing {
     return CGSize(width: w, height: h)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 // MARK: - Flexible Drawing
@@ -32,6 +38,8 @@ struct FlexibleDrawing: CustomDrawing {
   var idealHeight: CGFloat = 10
 
   struct Cache {}
+  typealias Commitment = CGRect
+
   func makeCache() -> Cache {
     Cache()
   }
@@ -43,7 +51,11 @@ struct FlexibleDrawing: CustomDrawing {
     )
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 // MARK: - Convenience Constructors

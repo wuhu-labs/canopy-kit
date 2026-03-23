@@ -22,6 +22,7 @@ private struct TrackingDrawing: CustomDrawing {
   struct Cache {
     var token: Int
   }
+  typealias Commitment = CGRect
 
   func makeCache() -> Cache {
     recorder.makeCount += 1
@@ -37,7 +38,11 @@ private struct TrackingDrawing: CustomDrawing {
     CGSize(width: 100, height: 20)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 @MainActor
@@ -107,6 +112,7 @@ private struct TrackingDrawing: CustomDrawing {
     }
 
     #expect(commitment.primitive.isEquivalent(to: .shape(AnyShape(Rectangle()))))
+    #expect((commitment.value as? Path)?.boundingRect == CGRect(x: 0, y: 0, width: 80, height: 10))
     #expect(leaf.frame.width == 80)
     #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
   }
@@ -134,6 +140,7 @@ private struct TrackingDrawing: CustomDrawing {
     }
 
     #expect(commitment.primitive.isEquivalent(to: .drawing(fixedDrawing(width: 80, height: 20))))
+    #expect(commitment.value as? CGRect == CGRect(x: 0, y: 0, width: 80, height: 20))
     #expect(leaf.frame.size == CGSize(width: 80, height: 20))
   }
 
