@@ -17,14 +17,13 @@ struct MarkdownDocumentComponent: Component, Equatable {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 
-    return .layout(
-      AnyLayout(VStackLayout(spacing: 8)),
-      children: IdentifiedArray(
-        uniqueElements: blocks.enumerated().compactMap { index, block in
-          blockComponent(block, key: "block-\(index)")
+    return .vstack(spacing: 8) {
+      for (index, block) in blocks.enumerated() {
+        if let node = blockComponent(block, key: "block-\(index)") {
+          node
         }
-      )
-    )
+      }
+    }
   }
 }
 
@@ -41,7 +40,7 @@ struct HeadingBlockComponent: Component, Equatable {
     case 3: 19
     default: 16
     }
-    return .primitive(.customDrawing(AnyDrawing(TextDrawing(text, fontSize: size))))
+    return .text(text, fontSize: size)
   }
 }
 
@@ -49,7 +48,7 @@ struct ParagraphBlockComponent: Component, Equatable {
   let text: String
 
   func body() -> Node {
-    .primitive(.customDrawing(AnyDrawing(TextDrawing(text, fontSize: 14))))
+    .text(text)
   }
 }
 
@@ -57,7 +56,7 @@ struct CodeBlockComponent: Component, Equatable {
   let code: String
 
   func body() -> Node {
-    Node.drawing(AnyDrawing(TextDrawing(code, fontSize: 13)))
+    Node.text(code, fontSize: 13)
       .padding(left: 12, top: 8, right: 12, bottom: 8)
   }
 }
@@ -73,25 +72,19 @@ struct BlockQuoteComponent: Component, Equatable {
   nonisolated let childBlocks: [BlockData]
 
   func body() -> Node {
-    .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        IdentifiedNode(
-          id: "bar",
-          node: .shape(AnyShape(Rectangle())).frame(width: 3)
-        ),
-        .layout(
-          key: "content",
-          AnyLayout(VStackLayout(spacing: 8)),
-          children: IdentifiedArray(
-            uniqueElements: childBlocks.enumerated().compactMap { index, block in
-              blockComponentFromData(block, key: "quote-\(index)")
-            }
-          )
-        )
-        .padding(left: 13),
-      ]
-    )
+    .zstack {
+      Node.shape(AnyShape(Rectangle())).frame(width: 3).keyed("bar")
+
+      Node.vstack(spacing: 8) {
+        for (index, block) in childBlocks.enumerated() {
+          if let node = blockComponentFromData(block, key: "quote-\(index)") {
+            node
+          }
+        }
+      }
+      .padding(left: 13)
+      .keyed("content")
+    }
   }
 }
 
@@ -99,17 +92,14 @@ struct UnorderedListComponent: Component, Equatable {
   nonisolated let items: [ListItemData]
 
   func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 6)),
-      children: IdentifiedArray(
-        uniqueElements: items.enumerated().map { index, item in
-          IdentifiedNode.component(
-            key: "item-\(index)",
-            AnyComponent(ListItemComponent(marker: "\u{2022}", item: item))
-          )
-        }
-      )
-    )
+    .vstack(spacing: 6) {
+      for (index, item) in items.enumerated() {
+        IdentifiedNode.component(
+          key: "item-\(index)",
+          AnyComponent(ListItemComponent(marker: "\u{2022}", item: item))
+        )
+      }
+    }
   }
 }
 
@@ -118,20 +108,17 @@ struct OrderedListComponent: Component, Equatable {
   nonisolated let items: [ListItemData]
 
   func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 6)),
-      children: IdentifiedArray(
-        uniqueElements: items.enumerated().map { index, item in
-          IdentifiedNode.component(
-            key: "item-\(index)",
-            AnyComponent(ListItemComponent(
-              marker: "\(startIndex + UInt(index)).",
-              item: item
-            ))
-          )
-        }
-      )
-    )
+    .vstack(spacing: 6) {
+      for (index, item) in items.enumerated() {
+        IdentifiedNode.component(
+          key: "item-\(index)",
+          AnyComponent(ListItemComponent(
+            marker: "\(startIndex + UInt(index)).",
+            item: item
+          ))
+        )
+      }
+    }
   }
 }
 
@@ -140,24 +127,17 @@ struct ListItemComponent: Component, Equatable {
   nonisolated let item: ListItemData
 
   func body() -> Node {
-    .layout(
-      AnyLayout(HStackLayout(spacing: 8)),
-      children: [
-        .drawing(
-          key: "marker",
-          AnyDrawing(TextDrawing(marker, fontSize: 14))
-        ),
-        .layout(
-          key: "content",
-          AnyLayout(VStackLayout(spacing: 6)),
-          children: IdentifiedArray(
-            uniqueElements: item.childBlocks.enumerated().compactMap { index, block in
-              blockComponentFromData(block, key: "block-\(index)")
-            }
-          )
-        ),
-      ]
-    )
+    .hstack(spacing: 8) {
+      Node.text(marker).keyed("marker")
+
+      Node.vstack(spacing: 6) {
+        for (index, block) in item.childBlocks.enumerated() {
+          if let node = blockComponentFromData(block, key: "block-\(index)") {
+            node
+          }
+        }
+      }.keyed("content")
+    }
   }
 }
 
@@ -165,7 +145,7 @@ struct FallbackTextComponent: Component, Equatable {
   let text: String
 
   func body() -> Node {
-    .primitive(.customDrawing(AnyDrawing(TextDrawing(text, fontSize: 14))))
+    .text(text)
   }
 }
 

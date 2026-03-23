@@ -88,6 +88,39 @@ public extension Node {
   static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
     primitive(.shape(shape), values: values)
   }
+
+  // MARK: Leaf Factories
+
+  /// Convenience: creates a text drawing node.
+  static func text(_ string: String, fontSize: CGFloat = 14) -> Self {
+    drawing(AnyDrawing(TextDrawing(string, fontSize: fontSize)))
+  }
+
+  /// Convenience: creates a text drawing node from an attributed string.
+  static func text(attributedString: CFAttributedString) -> Self {
+    drawing(AnyDrawing(TextDrawing(attributedString: attributedString)))
+  }
+
+  // MARK: Layout Convenience (NodeBuilder)
+
+  static func vstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
+    layout(AnyLayout(VStackLayout(spacing: spacing)), children: children())
+  }
+
+  static func hstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
+    layout(AnyLayout(HStackLayout(spacing: spacing)), children: children())
+  }
+
+  static func zstack(@NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
+    layout(AnyLayout(ZStackLayout()), children: children())
+  }
+
+  // MARK: Keying
+
+  /// Wraps this node in an ``IdentifiedNode`` with the given key.
+  func keyed(_ key: some Hashable) -> IdentifiedNode {
+    IdentifiedNode(id: key, node: self)
+  }
 }
 
 public extension IdentifiedNode {

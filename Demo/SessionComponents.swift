@@ -258,7 +258,7 @@ struct MessageComponent: Component {
       children.append(
         IdentifiedNode(
           id: "bubble",
-          node: .drawing(AnyDrawing(TextDrawing(model.content, fontSize: 14)))
+          node: Node.text(model.content)
             .padding(left: 10, top: 8, right: 10, bottom: 8)
             .viewModifier(BubbleBackground(color: SessionColors.userBubbleBackground))
         )
@@ -377,10 +377,8 @@ struct MessageComponent: Component {
 
 struct ThinkingIndicatorComponent: Component {
   func body() -> Node {
-    Node.drawing(AnyDrawing(TextDrawing(
-      attributedString: makeThinkingAttributedString()
-    )))
-    .padding(left: 16, top: 12, right: 16, bottom: 12)
+    Node.text(attributedString: makeThinkingAttributedString())
+      .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
 }
 
@@ -416,13 +414,11 @@ struct ToolCallComponent: Component {
       children.append(
         IdentifiedNode(
           id: "result-bg",
-          node: Node.drawing(AnyDrawing(TextDrawing(
-            attributedString: makeMonoAttributedString(
-              model.result,
-              fontSize: 11,
-              color: SessionColors.secondaryTextColor
-            )
-          )))
+          node: Node.text(attributedString: makeMonoAttributedString(
+            model.result,
+            fontSize: 11,
+            color: SessionColors.secondaryTextColor
+          ))
           .padding(left: 8, top: 6, right: 8, bottom: 6)
           .viewModifier(BubbleBackground(color: SessionColors.toolCallBackground))
         )
@@ -430,25 +426,16 @@ struct ToolCallComponent: Component {
     }
 
     // Wrap in container with left accent bar
-    return .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        // Left bar
-        IdentifiedNode(
-          id: "bar",
-          node: .shape(AnyShape(Rectangle())).frame(width: 2)
-        ),
-        // Content
-        IdentifiedNode(
-          id: "tool-content",
-          node: Node.layout(
-            AnyLayout(VStackLayout(spacing: 4)),
-            children: IdentifiedArray(uniqueElements: children)
-          )
-          .padding(left: 10, top: 4, bottom: 4)
-        ),
-      ]
-    )
+    return Node.zstack {
+      Node.shape(AnyShape(Rectangle())).frame(width: 2).keyed("bar")
+
+      Node.layout(
+        AnyLayout(VStackLayout(spacing: 4)),
+        children: IdentifiedArray(uniqueElements: children)
+      )
+      .padding(left: 10, top: 4, bottom: 4)
+      .keyed("tool-content")
+    }
     .viewModifier(TapGestureModifier(action: { [weak model] in
       model?.isExpanded.toggle()
     }))
@@ -478,12 +465,10 @@ struct ImagePlaceholderComponent: Component, Equatable {
   let label: String
 
   func body() -> Node {
-    Node.drawing(AnyDrawing(TextDrawing(
-      attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor)
-    )))
-    .padding(left: 12, top: 20, right: 12, bottom: 20)
-    .frame(height: 60)
-    .viewModifier(BubbleBackground(color: SessionColors.imagePlaceholderColor))
+    Node.text(attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor))
+      .padding(left: 12, top: 20, right: 12, bottom: 20)
+      .frame(height: 60)
+      .viewModifier(BubbleBackground(color: SessionColors.imagePlaceholderColor))
   }
 }
 
@@ -502,14 +487,13 @@ struct RichMarkdownComponent: Component, Equatable {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 
-    return .layout(
-      AnyLayout(VStackLayout(spacing: 8)),
-      children: IdentifiedArray(
-        uniqueElements: blocks.enumerated().compactMap { index, block in
-          richBlockNode(block, key: "block-\(index)")
+    return .vstack(spacing: 8) {
+      for (index, block) in blocks.enumerated() {
+        if let node = richBlockNode(block, key: "block-\(index)") {
+          node
         }
-      )
-    )
+      }
+    }
   }
 }
 
@@ -525,17 +509,11 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     default: 16
     }
     let attrString = renderInlinesRich(heading.inlineChildren, baseFontSize: fontSize, bold: true)
-    return .drawing(
-      key: key,
-      AnyDrawing(TextDrawing(attributedString: attrString))
-    )
+    return Node.text(attributedString: attrString).keyed(key)
 
   case let paragraph as Paragraph:
     let attrString = renderInlinesRich(paragraph.inlineChildren, baseFontSize: 14, bold: false)
-    return .drawing(
-      key: key,
-      AnyDrawing(TextDrawing(attributedString: attrString))
-    )
+    return Node.text(attributedString: attrString).keyed(key)
 
   case let codeBlock as CodeBlock:
     return .component(
@@ -581,21 +559,17 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     let items = Array(unorderedList.listItems).enumerated().map { i, item in
       richListItemNode(item, marker: "•", key: "li-\(i)")
     }
-    return .layout(
-      key: key,
-      AnyLayout(VStackLayout(spacing: 4)),
-      children: IdentifiedArray(uniqueElements: items)
-    )
+    return Node.vstack(spacing: 4) {
+      for item in items { item }
+    }.keyed(key)
 
   case let orderedList as OrderedList:
     let items = Array(orderedList.listItems).enumerated().map { i, item in
       richListItemNode(item, marker: "\(orderedList.startIndex + UInt(i)).", key: "li-\(i)")
     }
-    return .layout(
-      key: key,
-      AnyLayout(VStackLayout(spacing: 4)),
-      children: IdentifiedArray(uniqueElements: items)
-    )
+    return Node.vstack(spacing: 4) {
+      for item in items { item }
+    }.keyed(key)
 
   case let table as Markdown.Table:
     return richTableNode(table, key: key)
@@ -603,10 +577,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
   default:
     let text = plainTextFromMarkup(markup)
     guard !text.isEmpty else { return nil }
-    return .drawing(
-      key: key,
-      AnyDrawing(TextDrawing(text, fontSize: 14))
-    )
+    return Node.text(text).keyed(key)
   }
 }
 
@@ -615,21 +586,12 @@ private func richListItemNode(_ item: ListItem, marker: String, key: String) -> 
     richBlockNode(child, key: "item-\(i)")
   }
 
-  return .layout(
-    key: key,
-    AnyLayout(HStackLayout(spacing: 6)),
-    children: [
-      .drawing(
-        key: "marker",
-        AnyDrawing(TextDrawing(marker, fontSize: 14))
-      ),
-      .layout(
-        key: "content",
-        AnyLayout(VStackLayout(spacing: 4)),
-        children: IdentifiedArray(uniqueElements: childNodes)
-      ),
-    ]
-  )
+  return Node.hstack(spacing: 6) {
+    Node.text(marker).keyed("marker")
+    Node.vstack(spacing: 4) {
+      for node in childNodes { node }
+    }.keyed("content")
+  }.keyed(key)
 }
 
 private func richTableNode(_ table: Markdown.Table, key: String) -> IdentifiedNode {
