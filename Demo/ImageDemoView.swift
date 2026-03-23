@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -65,17 +64,14 @@ struct ImageGalleryComponent: Component {
   let model: ImageDemoModel
 
   func body() -> Node {
-    .layout(
-      VStackLayout(spacing: 12),
-      children: IdentifiedArray(
-        uniqueElements: model.items.map { item in
-          IdentifiedNode.component(
-            key: item.id,
-            ImageCardComponent(item: item)
-          )
-        }
-      )
-    )
+    .vstack(spacing: 12) {
+      for item in model.items {
+        IdentifiedNode.component(
+          key: item.id,
+          ImageCardComponent(item: item)
+        )
+      }
+    }
   }
 }
 

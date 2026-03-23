@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -70,17 +69,14 @@ struct ReactiveFeedComponent: Component {
   let model: ReactiveFeedModel
 
   func body() -> Node {
-    .layout(
-      VStackLayout(spacing: 8),
-      children: IdentifiedArray(
-        uniqueElements: model.paragraphs.map { paragraph in
-          IdentifiedNode.component(
-            key: paragraph.id,
-            ParagraphCardComponent(paragraph: paragraph)
-          )
-        }
-      )
-    )
+    .vstack(spacing: 8) {
+      for paragraph in model.paragraphs {
+        IdentifiedNode.component(
+          key: paragraph.id,
+          ParagraphCardComponent(paragraph: paragraph)
+        )
+      }
+    }
   }
 }
 
@@ -88,29 +84,19 @@ struct ParagraphCardComponent: Component, Equatable {
   let paragraph: ReactiveFeedModel.Paragraph
 
   func body() -> Node {
-    .layout(
-      VStackLayout(spacing: 6),
-      children: [
-        .drawing(
-          key: "label",
-          TextDrawing("Paragraph \(paragraph.id)", fontSize: 12)
-        ),
-        .drawing(
-          key: "text",
-          TextDrawing(paragraph.text, fontSize: 14)
-        ),
-        .layout(
-          key: "rule",
-          FrameLayout(height: 1),
-          children: [
-            .shape(
-              key: "shape",
-              Rectangle()
-            ),
-          ]
-        ),
-      ]
-    )
+    .vstack(spacing: 6) {
+      IdentifiedNode.drawing(
+        key: "label",
+        TextDrawing("Paragraph \(paragraph.id)", fontSize: 12)
+      )
+      IdentifiedNode.drawing(
+        key: "text",
+        TextDrawing(paragraph.text, fontSize: 14)
+      )
+      IdentifiedNode.layout(key: "rule", FrameLayout(height: 1)) {
+        IdentifiedNode.shape(key: "shape", Rectangle())
+      }
+    }
   }
 }
 
@@ -248,17 +234,14 @@ struct MultiDocumentComponent: Component {
   let appModel: AppModel
 
   func body() -> Node {
-    .layout(
-      VStackLayout(spacing: 16),
-      children: IdentifiedArray(
-        uniqueElements: appModel.documents.map { doc in
-          IdentifiedNode.component(
-            key: doc.id,
-            SingleDocumentComponent(document: doc)
-          )
-        }
-      )
-    )
+    .vstack(spacing: 16) {
+      for doc in appModel.documents {
+        IdentifiedNode.component(
+          key: doc.id,
+          SingleDocumentComponent(document: doc)
+        )
+      }
+    }
   }
 }
 

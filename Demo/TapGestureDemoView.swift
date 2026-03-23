@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -83,27 +82,22 @@ struct TapGestureDemoComponent: Component {
   private static let cardHeight: CGFloat = 40
 
   func body() -> Node {
-    .layout(
-      VStackLayout(spacing: 12),
-      children: IdentifiedArray(
-        uniqueElements: model.counters.map { counter in
-          IdentifiedNode.layout(
-            key: counter.id,
-            VStackLayout(spacing: 4),
-            children: [
-              IdentifiedNode(
-                id: "bg",
-                node: .shape(Capsule()).frame(height: Self.cardHeight)
-              ),
-              .drawing(
-                key: "label",
-                TextDrawing("\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")", fontSize: 16)
-              ),
-            ]
+    .vstack(spacing: 12) {
+      for counter in model.counters {
+        IdentifiedNode.layout(key: counter.id, VStackLayout(spacing: 4)) {
+          Node.shape(Capsule())
+            .frame(height: Self.cardHeight)
+            .keyed("bg")
+          IdentifiedNode.drawing(
+            key: "label",
+            TextDrawing(
+              "\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")",
+              fontSize: 16
+            )
           )
-          .viewModifier(CardModifier(model: model, id: counter.id))
         }
-      )
-    )
+        .viewModifier(CardModifier(model: model, id: counter.id))
+      }
+    }
   }
 }

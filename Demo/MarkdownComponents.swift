@@ -1,6 +1,5 @@
 import CanopyKit
 import CoreGraphics
-import IdentifiedCollections
 import Markdown
 import SwiftUI
 

@@ -2,7 +2,6 @@ import CanopyKit
 import CoreGraphics
 import CoreText
 import Foundation
-import IdentifiedCollections
 import Markdown
 import Observation
 import SwiftUI
@@ -168,35 +167,24 @@ struct SessionRootComponent: Component {
     let streamingID = model.streamingMessageID
     let isRunning = model.isRunning
 
-    var children: [IdentifiedNode] = []
-
-    for message in model.messages {
-      let isStreaming = message.id == streamingID
-      children.append(
-        .component(
+    return .vstack(spacing: 0) {
+      for message in model.messages {
+        let isStreaming = message.id == streamingID
+        IdentifiedNode.component(
           key: message.id,
           MessageComponent(
             model: message,
             isStreaming: isStreaming
           )
         )
-      )
-    }
-
-    // Thinking indicator: running but no streaming message yet
-    if isRunning, streamingID == nil {
-      children.append(
-        .component(
+      }
+      if isRunning, streamingID == nil {
+        IdentifiedNode.component(
           key: "__thinking",
           ThinkingIndicatorComponent()
         )
-      )
+      }
     }
-
-    return .layout(
-      VStackLayout(spacing: 0),
-      children: IdentifiedArray(uniqueElements: children)
-    )
   }
 }
 
@@ -225,13 +213,11 @@ struct MessageComponent: Component {
   // MARK: - User Body
 
   private func userBody() -> Node {
-    var children: [IdentifiedNode] = []
-
-    // Header
     let author = model.author ?? "User"
     let timestamp = timestampFormatter.string(from: model.timestamp)
-    children.append(
-      .drawing(
+
+    return Node.vstack(spacing: 6) {
+      IdentifiedNode.drawing(
         key: "header",
         TextDrawing(
           attributedString: makeHeaderAttributedString(
@@ -241,56 +227,38 @@ struct MessageComponent: Component {
           )
         )
       )
-    )
-
-    // Bubble
-    if !model.content.isEmpty {
-      children.append(
+      if !model.content.isEmpty {
         IdentifiedNode(
           id: "bubble",
           node: Node.text(model.content)
             .padding(left: 10, top: 8, right: 10, bottom: 8)
             .viewModifier(BubbleBackground(color: SessionColors.userBubbleBackground))
         )
-      )
-    }
-
-    // Images
-    for image in model.images {
-      children.append(
-        .component(
+      }
+      for image in model.images {
+        IdentifiedNode.component(
           key: "img-\(image.id)",
           ImagePlaceholderComponent(
             label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
           )
         )
-      )
+      }
     }
-
-    return Node.layout(
-      VStackLayout(spacing: 6),
-      children: IdentifiedArray(uniqueElements: children)
-    )
     .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
 
   private func assistantBody(isStreaming: Bool) -> Node {
-    var children: [IdentifiedNode] = []
-
-    // Header
-    if isStreaming {
-      children.append(
-        .drawing(
+    return Node.vstack(spacing: 6) {
+      if isStreaming {
+        IdentifiedNode.drawing(
           key: "header",
           TextDrawing(
             attributedString: makeStreamingHeaderAttributedString()
           )
         )
-      )
-    } else {
-      let timestamp = timestampFormatter.string(from: model.timestamp)
-      children.append(
-        .drawing(
+      } else {
+        let timestamp = timestampFormatter.string(from: model.timestamp)
+        IdentifiedNode.drawing(
           key: "header",
           TextDrawing(
             attributedString: makeHeaderAttributedString(
@@ -300,65 +268,40 @@ struct MessageComponent: Component {
             )
           )
         )
-      )
-    }
-
-    // Markdown content
-    if !model.content.isEmpty {
-      children.append(
-        .component(
+      }
+      if !model.content.isEmpty {
+        IdentifiedNode.component(
           key: "markdown",
           RichMarkdownComponent(source: model.content)
         )
-      )
-    }
-
-    // Streaming cursor
-    if isStreaming {
-      children.append(
+      }
+      if isStreaming {
         IdentifiedNode(
           id: "cursor",
           node: .shape(Rectangle()).frame(height: 3)
         )
-      )
-    }
-
-    // Images
-    for image in model.images {
-      children.append(
-        .component(
+      }
+      for image in model.images {
+        IdentifiedNode.component(
           key: "img-\(image.id)",
           ImagePlaceholderComponent(
             label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
           )
         )
-      )
-    }
-
-    // Tool calls — each is its own observable component
-    for tc in model.toolCalls {
-      children.append(
-        .component(
+      }
+      for tc in model.toolCalls {
+        IdentifiedNode.component(
           key: "tc-\(tc.id)",
           ToolCallComponent(model: tc)
         )
-      )
-    }
-
-    // Divider (not on streaming messages)
-    if !isStreaming {
-      children.append(
+      }
+      if !isStreaming {
         IdentifiedNode(
           id: "divider",
           node: .shape(Rectangle()).frame(height: 1)
         )
-      )
+      }
     }
-
-    return Node.layout(
-      VStackLayout(spacing: 6),
-      children: IdentifiedArray(uniqueElements: children)
-    )
     .padding(left: 16, top: 12, right: 16, bottom: 4)
   }
 }
@@ -382,11 +325,11 @@ struct ToolCallComponent: Component {
   let model: ChatToolCallModel
 
   func body() -> Node {
-    var children: [IdentifiedNode] = []
+    return Node.zstack {
+      Node.shape(Rectangle()).frame(width: 2).keyed("bar")
 
-    // Tool name + args header
-    children.append(
-      .drawing(
+      Node.vstack(spacing: 4) {
+        IdentifiedNode.drawing(
         key: "label",
         TextDrawing(
           attributedString: makeToolCallAttributedString(
@@ -397,11 +340,7 @@ struct ToolCallComponent: Component {
           )
         )
       )
-    )
-
-    // Result — shown in full when expanded, truncated when collapsed
-    if !model.result.isEmpty, model.isExpanded {
-      children.append(
+        if !model.result.isEmpty, model.isExpanded {
         IdentifiedNode(
           id: "result-bg",
           node: Node.text(attributedString: makeMonoAttributedString(
@@ -412,17 +351,8 @@ struct ToolCallComponent: Component {
           .padding(left: 8, top: 6, right: 8, bottom: 6)
           .viewModifier(BubbleBackground(color: SessionColors.toolCallBackground))
         )
-      )
-    }
-
-    // Wrap in container with left accent bar
-    return Node.zstack {
-      Node.shape(Rectangle()).frame(width: 2).keyed("bar")
-
-      Node.layout(
-        VStackLayout(spacing: 4),
-        children: IdentifiedArray(uniqueElements: children)
-      )
+        }
+      }
       .padding(left: 10, top: 4, bottom: 4)
       .keyed("tool-content")
     }
@@ -521,24 +451,17 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     }
     guard !childNodes.isEmpty else { return nil }
 
-    return .layout(
-      key: key,
-      ZStackLayout(),
-      children: [
-        IdentifiedNode(
-          id: "bar",
-          node: .shape(Rectangle()).frame(width: 3)
-        ),
-        IdentifiedNode(
-          id: "content",
-          node: Node.layout(
-            VStackLayout(spacing: 6),
-            children: IdentifiedArray(uniqueElements: childNodes)
-          )
-          .padding(left: 13)
-        ),
-      ]
-    )
+    return Node.zstack {
+      Node.shape(Rectangle()).frame(width: 3).keyed("bar")
+      Node.vstack(spacing: 6) {
+        for childNode in childNodes {
+          childNode
+        }
+      }
+      .padding(left: 13)
+      .keyed("content")
+    }
+    .keyed(key)
 
   case let unorderedList as UnorderedList:
     let items = Array(unorderedList.listItems).enumerated().map { i, item in
@@ -610,11 +533,9 @@ struct RichCodeBlockComponent: Component, Equatable {
   let language: String?
 
   func body() -> Node {
-    var children: [IdentifiedNode] = []
-
-    if let language, !language.isEmpty {
-      children.append(
-        .drawing(
+    return Node.vstack(spacing: 4) {
+      if let language, !language.isEmpty {
+        IdentifiedNode.drawing(
           key: "lang",
           TextDrawing(
             attributedString: makeMonoAttributedString(
@@ -624,11 +545,8 @@ struct RichCodeBlockComponent: Component, Equatable {
             )
           )
         )
-      )
-    }
-
-    children.append(
-      .drawing(
+      }
+      IdentifiedNode.drawing(
         key: "code",
         TextDrawing(
           attributedString: makeMonoAttributedString(
@@ -638,12 +556,7 @@ struct RichCodeBlockComponent: Component, Equatable {
           )
         )
       )
-    )
-
-    return Node.layout(
-      VStackLayout(spacing: 4),
-      children: IdentifiedArray(uniqueElements: children)
-    )
+    }
     .padding(left: 12, top: 8, right: 12, bottom: 8)
     .viewModifier(BubbleBackground(color: CGColor(gray: 0.95, alpha: 1)))
   }

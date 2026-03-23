@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -170,20 +169,16 @@ private func makeMockSessionModel() -> ChatSessionModel {
         let model: ChatSessionModel
 
         func body() -> Node {
-          .layout(
-            AnyLayout(VStackLayout(spacing: 0)),
-            children: IdentifiedArray(
-              uniqueElements: model.messages.map { msg in
-                // Each message is a stable component
-                IdentifiedNode.component(key: msg.id, ...)
-              }
-            )
-          )
+          .vstack(spacing: 0) {
+            for msg in model.messages {
+              IdentifiedNode.component(key: msg.id, ...)
+            }
+          }
         }
       }
       ```
 
-      The `IdentifiedArray` with `key: msg.id` ensures each message maintains its identity across re-renders.
+      The explicit `key: msg.id` ensures each message maintains its identity across re-renders.
       """,
       timestamp: now.addingTimeInterval(-240),
       toolCalls: [
