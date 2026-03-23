@@ -1,11 +1,13 @@
+@testable import CanopyKit
 import CoreGraphics
 import IdentifiedCollections
 import SwiftUI
 import Testing
-@testable import CanopyKit
 
 private struct StubComponent: Component {
-  func body() -> Node { .primitive(.customDrawing(fixedDrawing(width: 0, height: 0))) }
+  func body() -> Node {
+    .primitive(.customDrawing(fixedDrawing(width: 0, height: 0)))
+  }
 }
 
 private final class DrawingCacheRecorder {
@@ -110,7 +112,9 @@ private struct TrackingDrawing: CustomDrawing {
 
   @Test func viewModifierKeyIsSetByViewModifier() {
     struct TestModifier: ViewModifier {
-      func body(content: Content) -> some View { content }
+      func body(content: Content) -> some View {
+        content
+      }
     }
     let node = Node.primitive(.customDrawing(fixedDrawing(width: 60, height: 20)))
       .viewModifier(TestModifier())

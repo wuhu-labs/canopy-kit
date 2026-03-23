@@ -31,7 +31,7 @@ public extension Node {
   ///
   /// Multiple calls concatenate: the modifiers are applied left-to-right in
   /// the order they were attached.
-  func viewModifier<M: ViewModifier>(_ modifier: M) -> Self {
+  func viewModifier(_ modifier: some ViewModifier) -> Self {
     var node = self
     let wrapped = AnyViewModifier(modifier)
     if let existing = node.values[ViewModifierKey.self] {
@@ -93,7 +93,7 @@ public extension IdentifiedNode {
     return node
   }
 
-  func viewModifier<M: ViewModifier>(_ modifier: M) -> Self {
+  func viewModifier(_ modifier: some ViewModifier) -> Self {
     var node = self
     let wrapped = AnyViewModifier(modifier)
     if let existing = node.node.values[ViewModifierKey.self] {

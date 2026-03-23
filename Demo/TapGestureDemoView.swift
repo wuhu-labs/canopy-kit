@@ -35,10 +35,10 @@ struct CardModifier: ViewModifier {
 
   var fill: Color {
     switch id {
-      case 0: return .red
-      case 1: return .green
-      case 2: return .blue
-      default: fatalError()
+    case 0: .red
+    case 1: .green
+    case 2: .blue
+    default: fatalError()
     }
   }
 
@@ -91,7 +91,7 @@ struct TapGestureDemoComponent: Component {
       AnyLayout(VStackLayout(spacing: 12)),
       children: IdentifiedArray(
         uniqueElements: model.counters.map { counter in
-          return IdentifiedNode.layout(
+          IdentifiedNode.layout(
             key: counter.id,
             AnyLayout(VStackLayout(spacing: 4)),
             children: [

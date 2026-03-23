@@ -46,7 +46,9 @@ private protocol AnyNodeValueBox {
 private struct NodeValueBox<Value>: AnyNodeValueBox, @unchecked Sendable {
   let typedValue: Value
 
-  var value: Any { typedValue }
+  var value: Any {
+    typedValue
+  }
 
   func isEquivalent(to other: any AnyNodeValueBox) -> Bool {
     guard let otherValue = other.value as? Value else { return false }

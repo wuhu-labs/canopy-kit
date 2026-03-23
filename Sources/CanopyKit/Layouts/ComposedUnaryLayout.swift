@@ -28,9 +28,9 @@ public struct ComposedUnaryLayout: Layout, Equatable {
     // Ask outer to lay out a single virtual child whose measurement
     // delegates to inner.
     let outerResult = outer.layout(
-      subviews: [LayoutSubview({ outerProposal in
+      subviews: [LayoutSubview { outerProposal in
         inner.layout(subviews: subviews, proposal: outerProposal).size
-      })],
+      }],
       proposal: proposal
     )
 

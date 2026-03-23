@@ -169,7 +169,7 @@ public extension IdentifiedNode {
 public struct AnyComponent: @unchecked Sendable {
   private let value: any Component
 
-  public init<C: Component>(_ component: C) {
+  public init(_ component: some Component) {
     value = component
   }
 
@@ -216,8 +216,6 @@ public final class ResolvedNode: Identifiable, @unchecked Sendable {
     }
   }
 }
-
-
 
 @MainActor
 private struct RuntimeEntry {
@@ -275,7 +273,7 @@ public final class ComponentRenderer {
         depth: 0,
         component: root,
         values: NodeValues()
-      )
+      ),
     ]
     dirtyIDs = [.root]
     resolvedRoot = ResolvedNode(id: .root, content: .primitive(.customDrawing(AnyDrawing(PlaceholderDrawing()))))
@@ -802,7 +800,13 @@ private func reusePrimitiveNode(
 /// before the first `refresh()` replaces it.
 private struct PlaceholderDrawing: CustomDrawing {
   struct Cache {}
-  func makeCache() -> Cache { Cache() }
-  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize { .zero }
+  func makeCache() -> Cache {
+    Cache()
+  }
+
+  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
+    .zero
+  }
+
   func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
 }

@@ -1,5 +1,5 @@
-import CoreGraphics
 @testable import CanopyKit
+import CoreGraphics
 
 // MARK: - Fixed-Size Drawing
 
@@ -10,7 +10,9 @@ struct FixedSizeDrawing: CustomDrawing {
   var height: CGFloat
 
   struct Cache {}
-  func makeCache() -> Cache { Cache() }
+  func makeCache() -> Cache {
+    Cache()
+  }
 
   func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
     let w = proposal.width.map { min(width, $0) } ?? width
@@ -30,7 +32,9 @@ struct FlexibleDrawing: CustomDrawing {
   var idealHeight: CGFloat = 10
 
   struct Cache {}
-  func makeCache() -> Cache { Cache() }
+  func makeCache() -> Cache {
+    Cache()
+  }
 
   func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
     CGSize(

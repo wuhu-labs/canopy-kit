@@ -1,6 +1,6 @@
+@testable import CanopyKit
 import CoreGraphics
 import Testing
-@testable import CanopyKit
 
 @Suite struct FrameLayoutTests {
   @Test func fixedWidthAndHeight() {

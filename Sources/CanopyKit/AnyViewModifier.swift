@@ -20,7 +20,7 @@ public struct AnyViewModifier: @unchecked Sendable {
   private var modifier: any ViewModifier
 
   /// Wraps a concrete `ViewModifier`.
-  public init<M: ViewModifier>(_ modifier: M) {
+  public init(_ modifier: some ViewModifier) {
     self.modifier = modifier
   }
 
@@ -39,7 +39,7 @@ public struct AnyViewModifier: @unchecked Sendable {
 }
 
 private func concatModifier(m1: some ViewModifier, m2: some ViewModifier) -> some ViewModifier {
-  return m1.concat(m2)
+  m1.concat(m2)
 }
 
 private func applyModifier(body: some View, modifier: some ViewModifier) -> AnyView {

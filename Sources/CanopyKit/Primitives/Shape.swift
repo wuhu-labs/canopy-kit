@@ -25,7 +25,7 @@ public extension ShapePrimitive {
 public struct AnyShape: @unchecked Sendable {
   private let value: any ShapePrimitive
 
-  public init<S: ShapePrimitive>(_ shape: S) {
+  public init(_ shape: some ShapePrimitive) {
     value = shape
   }
 

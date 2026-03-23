@@ -9,10 +9,6 @@ import SwiftUI
 struct MarkdownDocumentComponent: Component, Equatable {
   var source: String
 
-  init(source: String) {
-    self.source = source
-  }
-
   func body() -> Node {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
@@ -213,28 +209,28 @@ private func extractBlockData(_ markup: Markup) -> BlockData? {
 private func blockComponentFromData(_ block: BlockData, key: String) -> IdentifiedNode? {
   switch block {
   case let .heading(text, level):
-    return .component(key: key, AnyComponent(HeadingBlockComponent(text: text, level: level)))
+    .component(key: key, AnyComponent(HeadingBlockComponent(text: text, level: level)))
 
   case let .paragraph(text):
-    return .component(key: key, AnyComponent(ParagraphBlockComponent(text: text)))
+    .component(key: key, AnyComponent(ParagraphBlockComponent(text: text)))
 
   case let .codeBlock(code):
-    return .component(key: key, AnyComponent(CodeBlockComponent(code: code)))
+    .component(key: key, AnyComponent(CodeBlockComponent(code: code)))
 
   case .thematicBreak:
-    return .component(key: key, AnyComponent(ThematicBreakComponent()))
+    .component(key: key, AnyComponent(ThematicBreakComponent()))
 
   case let .blockQuote(children):
-    return .component(key: key, AnyComponent(BlockQuoteComponent(childBlocks: children)))
+    .component(key: key, AnyComponent(BlockQuoteComponent(childBlocks: children)))
 
   case let .unorderedList(items):
-    return .component(key: key, AnyComponent(UnorderedListComponent(items: items)))
+    .component(key: key, AnyComponent(UnorderedListComponent(items: items)))
 
   case let .orderedList(startIndex, items):
-    return .component(key: key, AnyComponent(OrderedListComponent(startIndex: startIndex, items: items)))
+    .component(key: key, AnyComponent(OrderedListComponent(startIndex: startIndex, items: items)))
 
   case let .fallbackText(text):
-    return .component(key: key, AnyComponent(FallbackTextComponent(text: text)))
+    .component(key: key, AnyComponent(FallbackTextComponent(text: text)))
   }
 }
 

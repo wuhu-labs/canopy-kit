@@ -1,5 +1,5 @@
-import CoreGraphics
 import CanopyKit
+import CoreGraphics
 
 let paragraphs: [String] = [
   "The system is designed around a small set of composable primitives. Each primitive handles exactly one concern, and they combine through well-defined interfaces.",

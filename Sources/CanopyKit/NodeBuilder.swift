@@ -9,17 +9,17 @@ import IdentifiedCollections
 /// their positional index within the enclosing `buildBlock`.
 @resultBuilder
 public struct NodeBuilder {
-  // Single IdentifiedNode expression
+  /// Single IdentifiedNode expression
   public static func buildExpression(_ node: IdentifiedNode) -> [IdentifiedNode] {
     [node]
   }
 
-  // Bare Node expression — auto-keyed by position
+  /// Bare Node expression — auto-keyed by position
   public static func buildExpression(_ node: Node) -> [IdentifiedNode] {
     [IdentifiedNode(id: _AutoKey.unkeyed, node: node)]
   }
 
-  // Variadic block
+  /// Variadic block
   public static func buildBlock(_ components: [IdentifiedNode]...) -> [IdentifiedNode] {
     var result: [IdentifiedNode] = []
     for group in components {
@@ -28,32 +28,32 @@ public struct NodeBuilder {
     return result
   }
 
-  // if
+  /// if
   public static func buildOptional(_ component: [IdentifiedNode]?) -> [IdentifiedNode] {
     component ?? []
   }
 
-  // if/else — first branch
+  /// if/else — first branch
   public static func buildEither(first component: [IdentifiedNode]) -> [IdentifiedNode] {
     component
   }
 
-  // if/else — second branch
+  /// if/else — second branch
   public static func buildEither(second component: [IdentifiedNode]) -> [IdentifiedNode] {
     component
   }
 
-  // for...in
+  /// for...in
   public static func buildArray(_ components: [[IdentifiedNode]]) -> [IdentifiedNode] {
-    components.flatMap { $0 }
+    components.flatMap(\.self)
   }
 
-  // #available
+  /// #available
   public static func buildLimitedAvailability(_ component: [IdentifiedNode]) -> [IdentifiedNode] {
     component
   }
 
-  // Auto-key by position
+  /// Auto-key by position
   public static func buildFinalResult(_ component: [IdentifiedNode]) -> IdentifiedArrayOf<IdentifiedNode> {
     var keyed: [IdentifiedNode] = []
     keyed.reserveCapacity(component.count)

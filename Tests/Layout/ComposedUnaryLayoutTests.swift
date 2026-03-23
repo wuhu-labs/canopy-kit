@@ -1,7 +1,7 @@
+@testable import CanopyKit
 import CoreGraphics
 import IdentifiedCollections
 import Testing
-@testable import CanopyKit
 
 @Suite struct ComposedUnaryLayoutTests {
   // MARK: - ComposedUnaryLayout directly
@@ -14,7 +14,7 @@ import Testing
       inner: AnyLayout(InsetLayout(left: 10, top: 5, right: 10, bottom: 5))
     )
 
-    let child = LayoutSubview({ _ in CGSize(width: 50, height: 30) })
+    let child = LayoutSubview { _ in CGSize(width: 50, height: 30) }
     let result = composed.layout(subviews: [child], proposal: ProposedSize(width: 200, height: nil))
 
     // Frame forces 100x70. Inset subtracts 20x10 → child gets proposed 80x60.
@@ -75,7 +75,7 @@ import Testing
 
     // The layout should be a ComposedUnaryLayout, not a plain InsetLayout wrapping FrameLayout.
     let result = layout.layout(
-      subviews: [LayoutSubview({ _ in CGSize(width: 50, height: 20) })],
+      subviews: [LayoutSubview { _ in CGSize(width: 50, height: 20) }],
       proposal: ProposedSize(width: 200, height: nil)
     )
     // Frame(width:100) + Inset(left:10) → total width = 100 + 10 = 110
@@ -97,7 +97,7 @@ import Testing
     #expect(children.count == 1)
 
     let result = layout.layout(
-      subviews: [LayoutSubview({ _ in CGSize(width: 50, height: 20) })],
+      subviews: [LayoutSubview { _ in CGSize(width: 50, height: 20) }],
       proposal: ProposedSize(width: 400, height: nil)
     )
     // Frame forces width 200. Inset subtracts 32 → child proposed 168.

@@ -8,9 +8,9 @@ import Observation
 import SwiftUI
 
 #if canImport(AppKit)
-import AppKit
+  import AppKit
 #elseif canImport(UIKit)
-import UIKit
+  import UIKit
 #endif
 
 // MARK: - Observable Models
@@ -45,12 +45,6 @@ struct ChatImageAttachment: Identifiable, Equatable, Sendable {
   let id: String
   var blobURI: String
   var mimeType: String
-
-  init(id: String, blobURI: String, mimeType: String) {
-    self.id = id
-    self.blobURI = blobURI
-    self.mimeType = mimeType
-  }
 }
 
 /// Per-message observable model. Each message is its own observable
@@ -66,7 +60,7 @@ final class ChatMessageModel: Identifiable {
   var timestamp: Date
   var toolCalls: [ChatToolCallModel]
 
-  public enum Role {
+  enum Role {
     case user
     case assistant
   }
@@ -170,10 +164,6 @@ private let timestampFormatter: DateFormatter = {
 struct SessionRootComponent: Component {
   let model: ChatSessionModel
 
-  init(model: ChatSessionModel) {
-    self.model = model
-  }
-
   func body() -> Node {
     let streamingID = model.streamingMessageID
     let isRunning = model.isRunning
@@ -194,7 +184,7 @@ struct SessionRootComponent: Component {
     }
 
     // Thinking indicator: running but no streaming message yet
-    if isRunning && streamingID == nil {
+    if isRunning, streamingID == nil {
       children.append(
         .component(
           key: "__thinking",
@@ -410,7 +400,7 @@ struct ToolCallComponent: Component {
     )
 
     // Result — shown in full when expanded, truncated when collapsed
-    if !model.result.isEmpty && model.isExpanded {
+    if !model.result.isEmpty, model.isExpanded {
       children.append(
         IdentifiedNode(
           id: "result-bg",
@@ -441,7 +431,6 @@ struct ToolCallComponent: Component {
     }))
   }
 }
-
 
 private struct TapGestureModifier: ViewModifier {
   let action: () -> Void
@@ -478,10 +467,6 @@ struct ImagePlaceholderComponent: Component, Equatable {
 /// rendering via NSAttributedString (bold, italic, code, links).
 struct RichMarkdownComponent: Component, Equatable {
   var source: String
-
-  init(source: String) {
-    self.source = source
-  }
 
   func body() -> Node {
     let document = Document(parsing: source)
@@ -560,7 +545,9 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
       richListItemNode(item, marker: "•", key: "li-\(i)")
     }
     return Node.vstack(spacing: 4) {
-      for item in items { item }
+      for item in items {
+        item
+      }
     }.keyed(key)
 
   case let orderedList as OrderedList:
@@ -568,7 +555,9 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
       richListItemNode(item, marker: "\(orderedList.startIndex + UInt(i)).", key: "li-\(i)")
     }
     return Node.vstack(spacing: 4) {
-      for item in items { item }
+      for item in items {
+        item
+      }
     }.keyed(key)
 
   case let table as Markdown.Table:
@@ -589,15 +578,17 @@ private func richListItemNode(_ item: ListItem, marker: String, key: String) -> 
   return Node.hstack(spacing: 6) {
     Node.text(marker).keyed("marker")
     Node.vstack(spacing: 4) {
-      for node in childNodes { node }
+      for node in childNodes {
+        node
+      }
     }.keyed("content")
   }.keyed(key)
 }
 
 private func richTableNode(_ table: Markdown.Table, key: String) -> IdentifiedNode {
-  let headers = Array(table.head.cells.map { $0.plainText })
+  let headers = Array(table.head.cells.map(\.plainText))
   let rows = Array(table.body.rows.map { row in
-    Array(row.cells.map { $0.plainText })
+    Array(row.cells.map(\.plainText))
   })
 
   var text = headers.joined(separator: " │ ") + "\n"

@@ -1,7 +1,7 @@
+@testable import CanopyKit
 import CoreGraphics
 import struct SwiftUI.Path
 import Testing
-@testable import CanopyKit
 
 private struct SemanticComponent: Component, Equatable {
   nonisolated let semanticID: Int
@@ -47,7 +47,9 @@ private struct SemanticDrawing: CustomDrawing, Equatable {
 
   struct Cache {}
 
-  func makeCache() -> Cache { Cache() }
+  func makeCache() -> Cache {
+    Cache()
+  }
 
   func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
     CGSize(width: semanticID, height: 20)

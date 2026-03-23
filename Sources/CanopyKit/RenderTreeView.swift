@@ -92,15 +92,8 @@ private enum BottomSentinel {
   static let id = "wuhu.renderTree.bottomSentinel"
 }
 
-private struct AutoScrollWhenHeightChangesKey: EnvironmentKey {
-  static let defaultValue = false
-}
-
 public extension EnvironmentValues {
-  var autoScrollWhenHeightChanges: Bool {
-    get { self[AutoScrollWhenHeightChangesKey.self] }
-    set { self[AutoScrollWhenHeightChangesKey.self] = newValue }
-  }
+  @Entry var autoScrollWhenHeightChanges: Bool = false
 }
 
 public extension View {
@@ -178,5 +171,3 @@ private struct DrawingCanvas: View {
     }
   }
 }
-
-
