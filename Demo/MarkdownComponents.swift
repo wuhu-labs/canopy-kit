@@ -57,27 +57,15 @@ struct CodeBlockComponent: Component, Equatable {
   let code: String
 
   func body() -> Node {
-    .layout(
-      AnyLayout(InsetLayout(left: 12, top: 8, right: 12, bottom: 8)),
-      children: [
-        .drawing(key: "code", AnyDrawing(TextDrawing(code, fontSize: 13))),
-      ]
-    )
+    Node.drawing(AnyDrawing(TextDrawing(code, fontSize: 13)))
+      .padding(left: 12, top: 8, right: 12, bottom: 8)
   }
 }
 
 struct ThematicBreakComponent: Component, Equatable {
   func body() -> Node {
-    .layout(
-      AnyLayout(FrameLayout(height: 1)),
-      children: [
-        .shape(
-          key: "shape",
-          AnyShape(Rectangle())
-        )
-        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.8, alpha: 1)),
-      ]
-    )
+    Node.shape(AnyShape(Rectangle()))
+      .frame(height: 1)
   }
 }
 
@@ -88,32 +76,20 @@ struct BlockQuoteComponent: Component, Equatable {
     .layout(
       AnyLayout(ZStackLayout()),
       children: [
-        .layout(
-          key: "bar",
-          AnyLayout(FrameLayout(width: 3)),
-          children: [
-            .shape(
-              key: "rect",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.7, alpha: 1)),
-          ]
+        IdentifiedNode(
+          id: "bar",
+          node: .shape(AnyShape(Rectangle())).frame(width: 3)
         ),
         .layout(
-          key: "content-inset",
-          AnyLayout(InsetLayout(left: 13)),
-          children: [
-            .layout(
-              key: "content",
-              AnyLayout(VStackLayout(spacing: 8)),
-              children: IdentifiedArray(
-                uniqueElements: childBlocks.enumerated().compactMap { index, block in
-                  blockComponentFromData(block, key: "quote-\(index)")
-                }
-              )
-            ),
-          ]
-        ),
+          key: "content",
+          AnyLayout(VStackLayout(spacing: 8)),
+          children: IdentifiedArray(
+            uniqueElements: childBlocks.enumerated().compactMap { index, block in
+              blockComponentFromData(block, key: "quote-\(index)")
+            }
+          )
+        )
+        .padding(left: 13),
       ]
     )
   }

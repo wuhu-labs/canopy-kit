@@ -95,15 +95,9 @@ struct TapGestureDemoComponent: Component {
             key: counter.id,
             AnyLayout(VStackLayout(spacing: 4)),
             children: [
-              .layout(
-                key: "bg",
-                AnyLayout(FrameLayout(height: Self.cardHeight)),
-                children: [
-                  .shape(
-                    key: "shape",
-                    AnyShape(Capsule())
-                  )
-                ]
+              IdentifiedNode(
+                id: "bg",
+                node: .shape(AnyShape(Capsule())).frame(height: Self.cardHeight)
               ),
               .drawing(
                 key: "label",

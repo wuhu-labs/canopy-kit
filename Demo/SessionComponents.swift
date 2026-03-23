@@ -256,26 +256,11 @@ struct MessageComponent: Component {
     // Bubble
     if !model.content.isEmpty {
       children.append(
-        .layout(
-          key: "bubble",
-          AnyLayout(ZStackLayout()),
-          children: [
-            .shape(
-              key: "bg",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.userBubbleBackground),
-            .layout(
-              key: "text-inset",
-              AnyLayout(InsetLayout(left: 10, top: 8, right: 10, bottom: 8)),
-              children: [
-                .drawing(
-                  key: "text",
-                  AnyDrawing(TextDrawing(model.content, fontSize: 14))
-                ),
-              ]
-            ),
-          ]
+        IdentifiedNode(
+          id: "bubble",
+          node: .drawing(AnyDrawing(TextDrawing(model.content, fontSize: 14)))
+            .padding(left: 10, top: 8, right: 10, bottom: 8)
+            .viewModifier(BubbleBackground(color: SessionColors.userBubbleBackground))
         )
       )
     }
@@ -292,19 +277,12 @@ struct MessageComponent: Component {
       )
     }
 
-    return .layout(
-      AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 12)),
-      children: [
-        .layout(
-          key: "content",
-          AnyLayout(VStackLayout(spacing: 6)),
-          children: IdentifiedArray(uniqueElements: children)
-        ),
-      ]
+    return Node.layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: IdentifiedArray(uniqueElements: children)
     )
+    .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
-
-  // MARK: - Assistant Body
 
   private func assistantBody(isStreaming: Bool) -> Node {
     var children: [IdentifiedNode] = []
@@ -348,16 +326,9 @@ struct MessageComponent: Component {
     // Streaming cursor
     if isStreaming {
       children.append(
-        .layout(
-          key: "cursor",
-          AnyLayout(FrameLayout(height: 3)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.streamingCursorColor),
-          ]
+        IdentifiedNode(
+          id: "cursor",
+          node: .shape(AnyShape(Rectangle())).frame(height: 3)
         )
       )
     }
@@ -387,30 +358,18 @@ struct MessageComponent: Component {
     // Divider (not on streaming messages)
     if !isStreaming {
       children.append(
-        .layout(
-          key: "divider",
-          AnyLayout(FrameLayout(height: 1)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.sectionDividerColor),
-          ]
+        IdentifiedNode(
+          id: "divider",
+          node: .shape(AnyShape(Rectangle())).frame(height: 1)
         )
       )
     }
 
-    return .layout(
-      AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 4)),
-      children: [
-        .layout(
-          key: "content",
-          AnyLayout(VStackLayout(spacing: 6)),
-          children: IdentifiedArray(uniqueElements: children)
-        ),
-      ]
+    return Node.layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: IdentifiedArray(uniqueElements: children)
     )
+    .padding(left: 16, top: 12, right: 16, bottom: 4)
   }
 }
 
@@ -418,17 +377,10 @@ struct MessageComponent: Component {
 
 struct ThinkingIndicatorComponent: Component {
   func body() -> Node {
-    .layout(
-      AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 12)),
-      children: [
-        .drawing(
-          key: "thinking",
-          AnyDrawing(TextDrawing(
-            attributedString: makeThinkingAttributedString()
-          ))
-        ),
-      ]
-    )
+    Node.drawing(AnyDrawing(TextDrawing(
+      attributedString: makeThinkingAttributedString()
+    )))
+    .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
 }
 
@@ -462,32 +414,17 @@ struct ToolCallComponent: Component {
     // Result — shown in full when expanded, truncated when collapsed
     if !model.result.isEmpty && model.isExpanded {
       children.append(
-        .layout(
-          key: "result-bg",
-          AnyLayout(ZStackLayout()),
-          children: [
-            .shape(
-              key: "bg",
-              AnyShape(Rectangle())
+        IdentifiedNode(
+          id: "result-bg",
+          node: Node.drawing(AnyDrawing(TextDrawing(
+            attributedString: makeMonoAttributedString(
+              model.result,
+              fontSize: 11,
+              color: SessionColors.secondaryTextColor
             )
-            .value(PrimitiveFillColorKey.self, SessionColors.toolCallBackground),
-            .layout(
-              key: "result-inset",
-              AnyLayout(InsetLayout(left: 8, top: 6, right: 8, bottom: 6)),
-              children: [
-                .drawing(
-                  key: "result-text",
-                  AnyDrawing(TextDrawing(
-                    attributedString: makeMonoAttributedString(
-                      model.result,
-                      fontSize: 11,
-                      color: SessionColors.secondaryTextColor
-                    )
-                  ))
-                ),
-              ]
-            ),
-          ]
+          )))
+          .padding(left: 8, top: 6, right: 8, bottom: 6)
+          .viewModifier(BubbleBackground(color: SessionColors.toolCallBackground))
         )
       )
     }
@@ -497,28 +434,18 @@ struct ToolCallComponent: Component {
       AnyLayout(ZStackLayout()),
       children: [
         // Left bar
-        .layout(
-          key: "bar",
-          AnyLayout(FrameLayout(width: 2)),
-          children: [
-            .shape(
-              key: "bar-rect",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.toolCallBorder),
-          ]
+        IdentifiedNode(
+          id: "bar",
+          node: .shape(AnyShape(Rectangle())).frame(width: 2)
         ),
         // Content
-        .layout(
-          key: "tool-content",
-          AnyLayout(InsetLayout(left: 10, top: 4, right: 0, bottom: 4)),
-          children: [
-            .layout(
-              key: "tool-vstack",
-              AnyLayout(VStackLayout(spacing: 4)),
-              children: IdentifiedArray(uniqueElements: children)
-            ),
-          ]
+        IdentifiedNode(
+          id: "tool-content",
+          node: Node.layout(
+            AnyLayout(VStackLayout(spacing: 4)),
+            children: IdentifiedArray(uniqueElements: children)
+          )
+          .padding(left: 10, top: 4, bottom: 4)
         ),
       ]
     )
@@ -537,40 +464,26 @@ private struct TapGestureModifier: ViewModifier {
   }
 }
 
+private struct BubbleBackground: ViewModifier {
+  let color: CGColor
+
+  func body(content: Content) -> some View {
+    content.background(Color(cgColor: color))
+  }
+}
+
 // MARK: - Image Placeholder Component
 
 struct ImagePlaceholderComponent: Component, Equatable {
   let label: String
 
   func body() -> Node {
-    .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        .layout(
-          key: "bg",
-          AnyLayout(FrameLayout(height: 60)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.imagePlaceholderColor),
-          ]
-        ),
-        .layout(
-          key: "label-inset",
-          AnyLayout(InsetLayout(left: 12, top: 20, right: 12, bottom: 20)),
-          children: [
-            .drawing(
-              key: "label",
-              AnyDrawing(TextDrawing(
-                attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor)
-              ))
-            ),
-          ]
-        ),
-      ]
-    )
+    Node.drawing(AnyDrawing(TextDrawing(
+      attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor)
+    )))
+    .padding(left: 12, top: 20, right: 12, bottom: 20)
+    .frame(height: 60)
+    .viewModifier(BubbleBackground(color: SessionColors.imagePlaceholderColor))
   }
 }
 
@@ -634,16 +547,9 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     )
 
   case _ as ThematicBreak:
-    return .layout(
-      key: key,
-      AnyLayout(FrameLayout(height: 1)),
-      children: [
-        .shape(
-          key: "shape",
-          AnyShape(Rectangle())
-        )
-        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.8, alpha: 1)),
-      ]
+    return IdentifiedNode(
+      id: key,
+      node: .shape(AnyShape(Rectangle())).frame(height: 1)
     )
 
   case let blockQuote as BlockQuote:
@@ -656,27 +562,17 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
       key: key,
       AnyLayout(ZStackLayout()),
       children: [
-        .layout(
-          key: "bar",
-          AnyLayout(FrameLayout(width: 3)),
-          children: [
-            .shape(
-              key: "rect",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.7, alpha: 1)),
-          ]
+        IdentifiedNode(
+          id: "bar",
+          node: .shape(AnyShape(Rectangle())).frame(width: 3)
         ),
-        .layout(
-          key: "content-inset",
-          AnyLayout(InsetLayout(left: 13)),
-          children: [
-            .layout(
-              key: "content",
-              AnyLayout(VStackLayout(spacing: 6)),
-              children: IdentifiedArray(uniqueElements: childNodes)
-            ),
-          ]
+        IdentifiedNode(
+          id: "content",
+          node: Node.layout(
+            AnyLayout(VStackLayout(spacing: 6)),
+            children: IdentifiedArray(uniqueElements: childNodes)
+          )
+          .padding(left: 13)
         ),
       ]
     )
@@ -791,27 +687,12 @@ struct RichCodeBlockComponent: Component, Equatable {
       )
     )
 
-    return .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        .shape(
-          key: "bg",
-          AnyShape(Rectangle())
-        )
-        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.95, alpha: 1)),
-        .layout(
-          key: "inset",
-          AnyLayout(InsetLayout(left: 12, top: 8, right: 12, bottom: 8)),
-          children: [
-            .layout(
-              key: "vstack",
-              AnyLayout(VStackLayout(spacing: 4)),
-              children: IdentifiedArray(uniqueElements: children)
-            ),
-          ]
-        ),
-      ]
+    return Node.layout(
+      AnyLayout(VStackLayout(spacing: 4)),
+      children: IdentifiedArray(uniqueElements: children)
     )
+    .padding(left: 12, top: 8, right: 12, bottom: 8)
+    .viewModifier(BubbleBackground(color: CGColor(gray: 0.95, alpha: 1)))
   }
 }
 

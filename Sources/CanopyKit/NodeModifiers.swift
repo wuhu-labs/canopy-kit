@@ -49,6 +49,41 @@ public extension Node {
   func clip(_ path: Path?) -> Self {
     viewModifier(_ClipModifier(path: path))
   }
+
+  // MARK: Unary Layout Modifiers
+
+  /// Wraps this node in a padding (inset) layout. If this node is already a
+  /// single-child layout, the layouts are composed into one to avoid nesting.
+  func padding(
+    left: CGFloat = 0,
+    top: CGFloat = 0,
+    right: CGFloat = 0,
+    bottom: CGFloat = 0
+  ) -> Self {
+    wrapUnary(AnyLayout(InsetLayout(left: left, top: top, right: right, bottom: bottom)))
+  }
+
+  /// Wraps this node in a padding (inset) layout with uniform insets.
+  func padding(_ inset: CGFloat) -> Self {
+    padding(left: inset, top: inset, right: inset, bottom: inset)
+  }
+
+  /// Wraps this node in a frame layout. If this node is already a
+  /// single-child layout, the layouts are composed into one to avoid nesting.
+  func frame(width: CGFloat? = nil, height: CGFloat? = nil) -> Self {
+    wrapUnary(AnyLayout(FrameLayout(width: width, height: height)))
+  }
+
+  private func wrapUnary(_ outer: AnyLayout) -> Self {
+    if case let .layout(inner, children) = content, children.count == 1 {
+      return .layout(
+        AnyLayout(ComposedUnaryLayout(outer: outer, inner: inner)),
+        children: children,
+        values: values
+      )
+    }
+    return .layout(outer, children: [IdentifiedNode(id: AnyHashable("__u"), node: self)])
+  }
 }
 
 public extension IdentifiedNode {
@@ -75,6 +110,29 @@ public extension IdentifiedNode {
 
   func clip(_ path: Path?) -> Self {
     viewModifier(_ClipModifier(path: path))
+  }
+
+  // MARK: Unary Layout Modifiers
+
+  func padding(
+    left: CGFloat = 0,
+    top: CGFloat = 0,
+    right: CGFloat = 0,
+    bottom: CGFloat = 0
+  ) -> Self {
+    var result = self
+    result.node = result.node.padding(left: left, top: top, right: right, bottom: bottom)
+    return result
+  }
+
+  func padding(_ inset: CGFloat) -> Self {
+    padding(left: inset, top: inset, right: inset, bottom: inset)
+  }
+
+  func frame(width: CGFloat? = nil, height: CGFloat? = nil) -> Self {
+    var result = self
+    result.node = result.node.frame(width: width, height: height)
+    return result
   }
 }
 
