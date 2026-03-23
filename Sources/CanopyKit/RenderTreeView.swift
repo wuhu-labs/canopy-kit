@@ -136,6 +136,8 @@ private struct VisibleRenderNodeView: View {
         path
       case let .customDrawing(drawing, storedCache):
         DrawingCanvas(drawing: drawing, storedCache: storedCache)
+      case let .customView(representable, storedCache):
+        ViewRepresentableCanvas(representable: representable, storedCache: storedCache)
       case nil:
         Color.clear
       }
@@ -169,5 +171,15 @@ private struct DrawingCanvas: View {
         )
       }
     }
+  }
+}
+
+private struct ViewRepresentableCanvas: View {
+  let representable: AnyViewRepresentable
+  let storedCache: Any?
+
+  var body: some View {
+    var cache = storedCache ?? representable.makeCache()
+    representable.makeView(cache: &cache)
   }
 }

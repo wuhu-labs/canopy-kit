@@ -89,6 +89,10 @@ public extension Node {
     primitive(.shape(shape), values: values)
   }
 
+  static func view(_ representable: AnyViewRepresentable, values: NodeValues = NodeValues()) -> Self {
+    primitive(.customView(representable), values: values)
+  }
+
   // MARK: Leaf Factories
 
   /// Convenience: creates a text drawing node.
@@ -163,6 +167,14 @@ public extension IdentifiedNode {
     values: NodeValues = NodeValues()
   ) -> Self {
     Self(id: key, node: .shape(shape, values: values))
+  }
+
+  static func view(
+    key: some Hashable,
+    _ representable: AnyViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .view(representable, values: values))
   }
 }
 

@@ -6,6 +6,7 @@ import SwiftUI
 public enum PrimitiveCommitment: @unchecked Sendable {
   case path(Path)
   case customDrawing(AnyDrawing, Any?)
+  case customView(AnyViewRepresentable, Any?)
 }
 
 public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
@@ -393,6 +394,17 @@ public final class RenderRuntime {
         proposal: proposal,
         cache: &entry.preparationCache!
       )
+
+    case let .customView(representable):
+      if entry.preparationCache == nil {
+        entry.preparationCache = representable.makeCache()
+      } else {
+        representable.updateCache(cache: &entry.preparationCache!)
+      }
+      return representable.sizeThatFits(
+        proposal: proposal,
+        cache: &entry.preparationCache!
+      )
     }
   }
 
@@ -412,6 +424,11 @@ public final class RenderRuntime {
 
     case let .customDrawing(drawing):
       let commitment = PrimitiveCommitment.customDrawing(drawing, entry.preparationCache)
+      entry.commitment = commitment
+      return commitment
+
+    case let .customView(representable):
+      let commitment = PrimitiveCommitment.customView(representable, entry.preparationCache)
       entry.commitment = commitment
       return commitment
     }
@@ -443,6 +460,8 @@ private func canReusePreparationCache(from oldNode: ResolvedNode?, to newNode: R
 
   switch (oldNode.content, newNode.content) {
   case (.primitive(.customDrawing(_)), .primitive(.customDrawing(_))):
+    return true
+  case (.primitive(.customView(_)), .primitive(.customView(_))):
     return true
   default:
     return false

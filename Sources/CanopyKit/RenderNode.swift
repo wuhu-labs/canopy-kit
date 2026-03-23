@@ -218,6 +218,12 @@ public extension RenderNode {
         primitiveCache = drawing.makeCache()
       }
       return drawing.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
+
+    case let .customView(representable):
+      if primitiveCache == nil {
+        primitiveCache = representable.makeCache()
+      }
+      return representable.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
     }
   }
 }

@@ -6,12 +6,15 @@ import SwiftUI
 public enum Primitive: @unchecked Sendable {
   case shape(AnyShape)
   case customDrawing(AnyDrawing)
+  case customView(AnyViewRepresentable)
 
   func isEquivalent(to other: Primitive) -> Bool {
     switch (self, other) {
     case let (.shape(lhs), .shape(rhs)):
       lhs.isEquivalent(to: rhs)
     case let (.customDrawing(lhs), .customDrawing(rhs)):
+      lhs.isEquivalent(to: rhs)
+    case let (.customView(lhs), .customView(rhs)):
       lhs.isEquivalent(to: rhs)
     default:
       false
