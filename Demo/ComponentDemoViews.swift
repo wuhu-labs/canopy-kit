@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -7,9 +6,7 @@ import SwiftUI
 
 struct StaticMarkdownDemoView: View {
   var body: some View {
-    ComponentTreeView(
-      root: AnyComponent(MarkdownDocumentComponent(source: staticMarkdownDocument))
-    )
+    ComponentTreeView(root: MarkdownDocumentComponent(source: staticMarkdownDocument))
   }
 }
 
@@ -54,11 +51,7 @@ struct ReactiveFeedDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(
-          ReactiveFeedComponent(model: model)
-        )
-      )
+      ComponentTreeView(root: ReactiveFeedComponent(model: model))
       .autoScrollWhenHeightChanges()
     }
   }
@@ -76,17 +69,12 @@ struct ReactiveFeedComponent: Component {
   let model: ReactiveFeedModel
 
   func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 8)),
-      children: IdentifiedArray(
-        uniqueElements: model.paragraphs.map { paragraph in
-          IdentifiedNode.component(
-            key: paragraph.id,
-            AnyComponent(ParagraphCardComponent(paragraph: paragraph))
-          )
-        }
-      )
-    )
+    Canopy.VStack(spacing: 8) {
+      for paragraph in model.paragraphs {
+        ParagraphCardComponent(paragraph: paragraph)
+          .id(paragraph.id)
+      }
+    }
   }
 }
 
@@ -94,30 +82,17 @@ struct ParagraphCardComponent: Component, Equatable {
   let paragraph: ReactiveFeedModel.Paragraph
 
   func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 6)),
-      children: [
-        .drawing(
-          key: "label",
-          AnyDrawing(TextDrawing("Paragraph \(paragraph.id)", fontSize: 12))
-        ),
-        .drawing(
-          key: "text",
-          AnyDrawing(TextDrawing(paragraph.text, fontSize: 14))
-        ),
-        .layout(
-          key: "rule",
-          AnyLayout(FrameLayout(height: 1)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.88, alpha: 1)),
-          ]
-        ),
-      ]
-    )
+    Canopy.VStack(spacing: 6) {
+      Canopy.Drawing(TextDrawing("Paragraph \(paragraph.id)", fontSize: 12))
+        .id("label")
+      Canopy.Drawing(TextDrawing(paragraph.text, fontSize: 14))
+        .id("text")
+      Node.layout(FrameLayout(height: 1)) {
+        Canopy.Shape(Rectangle())
+          .id("shape")
+      }
+      .id("rule")
+    }
   }
 }
 
@@ -255,19 +230,12 @@ struct MultiDocumentComponent: Component {
   let appModel: AppModel
 
   func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 16)),
-      children: IdentifiedArray(
-        uniqueElements: appModel.documents.map { doc in
-          IdentifiedNode.component(
-            key: doc.id,
-            AnyComponent(
-              SingleDocumentComponent(document: doc)
-            )
-          )
-        }
-      )
-    )
+    Canopy.VStack(spacing: 16) {
+      for doc in appModel.documents {
+        SingleDocumentComponent(document: doc)
+          .id(doc.id)
+      }
+    }
   }
 }
 
@@ -301,11 +269,7 @@ struct MarkdownStreamDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(
-          MultiDocumentComponent(appModel: appModel)
-        )
-      )
+      ComponentTreeView(root: MultiDocumentComponent(appModel: appModel))
       .autoScrollWhenHeightChanges()
     }
     .onReceive(timer) { _ in

@@ -34,17 +34,23 @@ public protocol Component {
   func body() -> Node
 }
 
+public extension Component {
+  func id(_ id: some Hashable) -> IdentifiedNode {
+    IdentifiedNode(id: id, node: .component(self))
+  }
+}
+
 public struct Node: @unchecked Sendable {
-  public var content: NodeContent
+  var content: NodeContent
   public var values: NodeValues
 
-  public init(content: NodeContent, values: NodeValues = NodeValues()) {
+  init(content: NodeContent, values: NodeValues = NodeValues()) {
     self.content = content
     self.values = values
   }
 }
 
-public enum NodeContent: @unchecked Sendable {
+enum NodeContent: @unchecked Sendable {
   case component(AnyComponent)
   case layout(AnyLayout, IdentifiedArrayOf<IdentifiedNode>)
   case primitive(Primitive)
@@ -65,11 +71,23 @@ public struct IdentifiedNode: Identifiable, @unchecked Sendable {
 }
 
 public extension Node {
-  static func component(_ component: AnyComponent, values: NodeValues = NodeValues()) -> Self {
+  static func component(_ component: some Component, values: NodeValues = NodeValues()) -> Self {
+    Self.component(AnyComponent(component), values: values)
+  }
+
+  internal static func component(_ component: AnyComponent, values: NodeValues = NodeValues()) -> Self {
     Self(content: .component(component), values: values)
   }
 
   static func layout(
+    _ layout: some Layout,
+    children: IdentifiedArrayOf<IdentifiedNode>,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.layout(AnyLayout(layout), children: children, values: values)
+  }
+
+  internal static func layout(
     _ layout: AnyLayout,
     children: IdentifiedArrayOf<IdentifiedNode>,
     values: NodeValues = NodeValues()
@@ -77,54 +95,77 @@ public extension Node {
     Self(content: .layout(layout, children), values: values)
   }
 
+  static func layout(
+    _ layout: some Layout,
+    values: NodeValues = NodeValues(),
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Self {
+    Self.layout(layout, children: children(), values: values)
+  }
+
   static func primitive(_ primitive: Primitive, values: NodeValues = NodeValues()) -> Self {
     Self(content: .primitive(primitive), values: values)
   }
 
-  static func drawing(_ drawing: AnyDrawing, values: NodeValues = NodeValues()) -> Self {
-    primitive(.customDrawing(drawing), values: values)
+  static func drawing(_ drawing: some CustomDrawing, values: NodeValues = NodeValues()) -> Self {
+    Self.primitive(.init(drawing), values: values)
   }
 
-  static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
-    primitive(.shape(shape), values: values)
+  static func shape(_ shape: some Shape, values: NodeValues = NodeValues()) -> Self {
+    Self.primitive(.init(shape), values: values)
+  }
+
+  static func view(
+    _ representable: some CustomViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    primitive(.init(representable), values: values)
   }
 
   // MARK: Leaf Factories
 
   /// Convenience: creates a text drawing node.
   static func text(_ string: String, fontSize: CGFloat = 14) -> Self {
-    drawing(AnyDrawing(TextDrawing(string, fontSize: fontSize)))
+    drawing(TextDrawing(string, fontSize: fontSize))
   }
 
   /// Convenience: creates a text drawing node from an attributed string.
   static func text(attributedString: CFAttributedString) -> Self {
-    drawing(AnyDrawing(TextDrawing(attributedString: attributedString)))
+    drawing(TextDrawing(attributedString: attributedString))
   }
 
   // MARK: Layout Convenience (NodeBuilder)
 
   static func vstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
-    layout(AnyLayout(VStackLayout(spacing: spacing)), children: children())
+    layout(VStackLayout(spacing: spacing), children: children())
   }
 
   static func hstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
-    layout(AnyLayout(HStackLayout(spacing: spacing)), children: children())
+    layout(HStackLayout(spacing: spacing), children: children())
   }
 
   static func zstack(@NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
-    layout(AnyLayout(ZStackLayout()), children: children())
+    layout(ZStackLayout(), children: children())
   }
 
   // MARK: Keying
 
   /// Wraps this node in an ``IdentifiedNode`` with the given key.
-  func keyed(_ key: some Hashable) -> IdentifiedNode {
-    IdentifiedNode(id: key, node: self)
+  func id(_ id: some Hashable) -> IdentifiedNode {
+    IdentifiedNode(id: id, node: self)
   }
 }
 
 public extension IdentifiedNode {
   static func component(
+    key: some Hashable,
+    _ component: some Component,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.component(key: key, AnyComponent(component), values: values)
+  }
+
+  internal static func component(
     key: some Hashable,
     _ component: AnyComponent,
     values: NodeValues = NodeValues()
@@ -134,11 +175,29 @@ public extension IdentifiedNode {
 
   static func layout(
     key: some Hashable,
+    _ layout: some Layout,
+    children: IdentifiedArrayOf<IdentifiedNode>,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.layout(key: key, AnyLayout(layout), children: children, values: values)
+  }
+
+  internal static func layout(
+    key: some Hashable,
     _ layout: AnyLayout,
     children: IdentifiedArrayOf<IdentifiedNode>,
     values: NodeValues = NodeValues()
   ) -> Self {
     Self(id: key, node: .layout(layout, children: children, values: values))
+  }
+
+  static func layout(
+    key: some Hashable,
+    _ layout: some Layout,
+    values: NodeValues = NodeValues(),
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Self {
+    Self.layout(key: key, layout, children: children(), values: values)
   }
 
   static func primitive(
@@ -151,30 +210,81 @@ public extension IdentifiedNode {
 
   static func drawing(
     key: some Hashable,
-    _ drawing: AnyDrawing,
+    _ drawing: some CustomDrawing,
     values: NodeValues = NodeValues()
   ) -> Self {
-    Self(id: key, node: .drawing(drawing, values: values))
+    Self.primitive(key: key, .init(drawing), values: values)
   }
 
   static func shape(
     key: some Hashable,
-    _ shape: AnyShape,
+    _ shape: some Shape,
     values: NodeValues = NodeValues()
   ) -> Self {
-    Self(id: key, node: .shape(shape, values: values))
+    Self.primitive(key: key, .init(shape), values: values)
+  }
+
+  static func view(
+    key: some Hashable,
+    _ representable: some CustomViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.primitive(key: key, .init(representable), values: values)
   }
 }
 
-public struct AnyComponent: @unchecked Sendable {
+public enum Canopy {
+  public static func Text(_ string: String, fontSize: CGFloat = 14) -> Node {
+    .text(string, fontSize: fontSize)
+  }
+
+  public static func Text(attributedString: CFAttributedString) -> Node {
+    .text(attributedString: attributedString)
+  }
+
+  public static func Drawing(_ drawing: some CustomDrawing, values: NodeValues = NodeValues()) -> Node {
+    .drawing(drawing, values: values)
+  }
+
+  public static func Shape(_ shape: some Shape, values: NodeValues = NodeValues()) -> Node {
+    .shape(shape, values: values)
+  }
+
+  public static func View(
+    _ representable: some CustomViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Node {
+    .view(representable, values: values)
+  }
+
+  public static func VStack(
+    spacing: CGFloat = 0,
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Node {
+    .vstack(spacing: spacing, children)
+  }
+
+  public static func HStack(
+    spacing: CGFloat = 0,
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Node {
+    .hstack(spacing: spacing, children)
+  }
+
+  public static func ZStack(@NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Node {
+    .zstack(children)
+  }
+}
+
+struct AnyComponent: @unchecked Sendable {
   private let value: any Component
 
-  public init(_ component: some Component) {
+  init(_ component: some Component) {
     value = component
   }
 
   @MainActor
-  public func body() -> Node {
+  func body() -> Node {
     value.body()
   }
 
@@ -189,17 +299,17 @@ private func compareComponent<C: Component>(lhs: C, rhs: any Component) -> Bool 
 }
 
 public final class ResolvedNode: Identifiable, @unchecked Sendable {
-  public enum Content: @unchecked Sendable {
+  enum Content: @unchecked Sendable {
     case component(AnyComponent, ResolvedNode)
     case layout(AnyLayout, IdentifiedArrayOf<ResolvedNode>)
     case primitive(Primitive)
   }
 
   public let id: NodeID
-  public let content: Content
+  let content: Content
   public let values: NodeValues
 
-  public init(id: NodeID, content: Content, values: NodeValues = NodeValues()) {
+  init(id: NodeID, content: Content, values: NodeValues = NodeValues()) {
     self.id = id
     self.content = content
     self.values = values
@@ -265,7 +375,11 @@ public final class ComponentRenderer {
   public private(set) var resolvedRoot: ResolvedNode
   public private(set) var revision = 0
 
-  public init(root: AnyComponent) {
+  public convenience init(root: some Component) {
+    self.init(root: AnyComponent(root))
+  }
+
+  init(root: AnyComponent) {
     registry = [
       .root: RuntimeEntry(
         id: .root,
@@ -276,11 +390,15 @@ public final class ComponentRenderer {
       ),
     ]
     dirtyIDs = [.root]
-    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.customDrawing(AnyDrawing(PlaceholderDrawing()))))
+    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.init(PlaceholderDrawing())))
     refresh()
   }
 
-  public func updateRoot(_ root: AnyComponent) {
+  public func updateRoot(_ root: some Component) {
+    updateRoot(AnyComponent(root))
+  }
+
+  func updateRoot(_ root: AnyComponent) {
     guard var entry = registry[.root] else { return }
     guard !entry.component.isEquivalent(to: root) else { return }
     entry.component = root
@@ -657,7 +775,8 @@ public struct ComponentTreeView: View {
   @State private var renderer: ComponentRenderer
   private let root: AnyComponent
 
-  public init(root: AnyComponent) {
+  public init(root: some Component) {
+    let root = AnyComponent(root)
     self.root = root
     _renderer = State(initialValue: ComponentRenderer(root: root))
   }
@@ -799,14 +918,15 @@ private func reusePrimitiveNode(
 /// Zero-size drawing used as a throwaway seed for `ComponentRenderer`
 /// before the first `refresh()` replaces it.
 private struct PlaceholderDrawing: CustomDrawing {
-  struct Cache {}
-  func makeCache() -> Cache {
-    Cache()
-  }
+  typealias Commitment = CGRect
 
-  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal _: ProposedSize, cache _: inout Void) -> CGSize {
     .zero
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }

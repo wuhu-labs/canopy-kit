@@ -6,7 +6,7 @@ import Testing
 
 private struct StubComponent: Component {
   func body() -> Node {
-    .primitive(.customDrawing(fixedDrawing(width: 0, height: 0)))
+    .primitive(.init(fixedDrawing(width: 0, height: 0)))
   }
 }
 
@@ -22,6 +22,7 @@ private struct TrackingDrawing: CustomDrawing {
   struct Cache {
     var token: Int
   }
+  typealias Commitment = CGRect
 
   func makeCache() -> Cache {
     recorder.makeCount += 1
@@ -37,7 +38,11 @@ private struct TrackingDrawing: CustomDrawing {
     CGSize(width: 100, height: 20)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 @MainActor
@@ -51,11 +56,11 @@ private struct TrackingDrawing: CustomDrawing {
         [
           ResolvedNode(
             id: NodeID(rawValue: 2),
-            content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+            content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
           ),
           ResolvedNode(
             id: NodeID(rawValue: 3),
-            content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+            content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
           ),
         ]
       )
@@ -76,19 +81,11 @@ private struct TrackingDrawing: CustomDrawing {
     #expect(view?.children.first?.children.count == 1)
   }
 
-  @Test func shapePrimitiveProducesPathCommitment() throws {
+  @Test func shapePrimitiveProducesViewCommitment() throws {
     let runtime = RenderRuntime()
-
-    var values = NodeValues()
-    values[PrimitiveFillColorKey.self] = CGColor(gray: 0.2, alpha: 1)
-    values[PrimitiveStrokeStyleKey.self] = PrimitiveStrokeStyle(
-      color: CGColor(gray: 0.8, alpha: 1),
-      lineWidth: 2
-    )
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.shape(AnyShape(Rectangle()))),
-      values: values
+      content: .primitive(.init(Rectangle()))
     )
 
     let renderRoot = runtime.layout(
@@ -101,13 +98,41 @@ private struct TrackingDrawing: CustomDrawing {
       Issue.record("Expected primitive render node")
       return
     }
-    guard case let .path(path) = commitment else {
-      Issue.record("Expected shape path commitment")
+    guard let commitment else {
+      Issue.record("Expected shape view commitment")
       return
     }
 
-    #expect(path.boundingRect.size.width == 80)
-    #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
+    #expect(commitment.primitive.isEquivalent(to: .init(Rectangle())))
+    #expect((commitment.value as? Path)?.boundingRect == CGRect(x: 0, y: 0, width: 80, height: 10))
+    #expect(leaf.frame.width == 80)
+  }
+
+  @Test func customDrawingPrimitiveProducesViewCommitment() throws {
+    let runtime = RenderRuntime()
+    let root = ResolvedNode(
+      id: .root,
+      content: .primitive(.init(fixedDrawing(width: 80, height: 20)))
+    )
+
+    let renderRoot = runtime.layout(
+      root: root,
+      proposal: ProposedSize(width: 100, height: nil)
+    )
+
+    let leaf = try #require(renderRoot.leaves().first)
+    guard case let .primitive(_, commitment) = leaf.content else {
+      Issue.record("Expected primitive render node")
+      return
+    }
+    guard let commitment else {
+      Issue.record("Expected custom drawing view commitment")
+      return
+    }
+
+    #expect(commitment.primitive.isEquivalent(to: Primitive(fixedDrawing(width: 80, height: 20))))
+    #expect(commitment.value as? CGRect == CGRect(x: 0, y: 0, width: 80, height: 20))
+    #expect(leaf.frame.size == CGSize(width: 80, height: 20))
   }
 
   @Test func viewModifierKeyIsSetByViewModifier() {
@@ -116,7 +141,7 @@ private struct TrackingDrawing: CustomDrawing {
         content
       }
     }
-    let node = Node.primitive(.customDrawing(fixedDrawing(width: 60, height: 20)))
+    let node = Node.primitive(.init(fixedDrawing(width: 60, height: 20)))
       .viewModifier(TestModifier())
 
     #expect(node.values[ViewModifierKey.self] != nil)
@@ -153,13 +178,13 @@ private struct TrackingDrawing: CustomDrawing {
 
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.customDrawing(AnyDrawing(TrackingDrawing(token: 1, recorder: recorder))))
+      content: .primitive(.init(TrackingDrawing(token: 1, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: initialRoot, proposal: ProposedSize(width: 100, height: nil))
 
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.customDrawing(AnyDrawing(TrackingDrawing(token: 2, recorder: recorder))))
+      content: .primitive(.init(TrackingDrawing(token: 2, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: updatedRoot, proposal: ProposedSize(width: 100, height: nil))
 
@@ -171,11 +196,11 @@ private struct TrackingDrawing: CustomDrawing {
     let runtime = RenderRuntime()
     let nestedLeafD = ResolvedNode(
       id: NodeID(rawValue: 5),
-      content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let nestedLeafE = ResolvedNode(
       id: NodeID(rawValue: 6),
-      content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let nestedStack = ResolvedNode(
       id: NodeID(rawValue: 4),
@@ -186,7 +211,7 @@ private struct TrackingDrawing: CustomDrawing {
     )
     let leafB = ResolvedNode(
       id: NodeID(rawValue: 3),
-      content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
@@ -206,7 +231,7 @@ private struct TrackingDrawing: CustomDrawing {
 
     let insertedHead = ResolvedNode(
       id: NodeID(rawValue: 2),
-      content: .primitive(.customDrawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),

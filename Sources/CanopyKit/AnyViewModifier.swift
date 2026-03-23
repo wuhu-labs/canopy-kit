@@ -16,11 +16,11 @@ import SwiftUI
 /// The caller is responsible for only attaching layout-independent modifiers.
 /// CanopyKit's layout engine does not see these — they are applied purely at
 /// the SwiftUI materialization layer.
-public struct AnyViewModifier: @unchecked Sendable {
+struct AnyViewModifier: @unchecked Sendable {
   private var modifier: any ViewModifier
 
   /// Wraps a concrete `ViewModifier`.
-  public init(_ modifier: some ViewModifier) {
+  init(_ modifier: some ViewModifier) {
     self.modifier = modifier
   }
 
@@ -29,11 +29,11 @@ public struct AnyViewModifier: @unchecked Sendable {
   }
 
   /// Returns a new modifier that applies `self` first, then `other`.
-  public func concat(_ other: AnyViewModifier) -> AnyViewModifier {
+  func concat(_ other: AnyViewModifier) -> AnyViewModifier {
     AnyViewModifier(concatModifier(m1: modifier, m2: other.modifier))
   }
 
-  public func apply(to view: some View) -> AnyView {
+  func apply(to view: some View) -> AnyView {
     applyModifier(body: view, modifier: modifier)
   }
 }
@@ -48,6 +48,6 @@ private func applyModifier(body: some View, modifier: some ViewModifier) -> AnyV
 
 // MARK: - Node Value Key
 
-public struct ViewModifierKey: NodeValueKey {
-  public static let defaultValue: AnyViewModifier? = nil
+struct ViewModifierKey: NodeValueKey {
+  static let defaultValue: AnyViewModifier? = nil
 }

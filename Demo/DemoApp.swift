@@ -32,6 +32,8 @@ struct DemoRootView: View {
           MarkdownStreamDemoView()
         case .tapGesture:
           TapGestureDemoView()
+        case .imageGallery:
+          ImageDemoView()
         case .sessionView:
           SessionDemoView()
         }
@@ -46,6 +48,7 @@ enum DemoKind: String, CaseIterable, Identifiable {
   case reactiveFeed
   case markdownStream
   case tapGesture
+  case imageGallery
   case sessionView
 
   var id: Self {
@@ -62,6 +65,8 @@ enum DemoKind: String, CaseIterable, Identifiable {
       "Markdown Stream"
     case .tapGesture:
       "Tap Gesture"
+    case .imageGallery:
+      "Image Gallery"
     case .sessionView:
       "Session View"
     }

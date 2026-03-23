@@ -131,12 +131,9 @@ private struct VisibleRenderNodeView: View {
   private func nodeContent(_ node: ResolvedRenderNode) -> some View {
     switch node.content {
     case let .primitive(_, commitment):
-      switch commitment {
-      case let .path(path):
-        path
-      case let .customDrawing(drawing, storedCache):
-        DrawingCanvas(drawing: drawing, storedCache: storedCache)
-      case nil:
+      if let commitment {
+        PrimitiveCanvas(commitment: commitment)
+      } else {
         Color.clear
       }
 
@@ -154,20 +151,11 @@ private struct VisibleRenderNodeView: View {
   }
 }
 
-private struct DrawingCanvas: View {
-  let drawing: AnyDrawing
-  let storedCache: Any?
+private struct PrimitiveCanvas: View {
+  let commitment: PrimitiveCommitment
 
   var body: some View {
-    Canvas { context, size in
-      context.withCGContext { cgContext in
-        var cache = storedCache ?? drawing.makeCache()
-        drawing.draw(
-          in: cgContext,
-          bounds: CGRect(origin: .zero, size: size),
-          cache: &cache
-        )
-      }
-    }
+    let representable = commitment.primitive.viewRepresentable
+    representable.makeView(commitment: commitment.value)
   }
 }

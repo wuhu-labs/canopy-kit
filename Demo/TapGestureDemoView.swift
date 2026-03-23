@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -66,11 +65,7 @@ struct TapGestureDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(
-          TapGestureDemoComponent(model: model)
-        )
-      )
+      ComponentTreeView(root: TapGestureDemoComponent(model: model))
     }
   }
 }
@@ -87,27 +82,23 @@ struct TapGestureDemoComponent: Component {
   private static let cardHeight: CGFloat = 40
 
   func body() -> Node {
-    .layout(
-      AnyLayout(VStackLayout(spacing: 12)),
-      children: IdentifiedArray(
-        uniqueElements: model.counters.map { counter in
-          IdentifiedNode.layout(
-            key: counter.id,
-            AnyLayout(VStackLayout(spacing: 4)),
-            children: [
-              IdentifiedNode(
-                id: "bg",
-                node: .shape(AnyShape(Capsule())).frame(height: Self.cardHeight)
-              ),
-              .drawing(
-                key: "label",
-                AnyDrawing(TextDrawing("\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")", fontSize: 16))
-              ),
-            ]
+    Canopy.VStack(spacing: 12) {
+      for counter in model.counters {
+        Node.layout(VStackLayout(spacing: 4)) {
+          Canopy.Shape(Capsule())
+            .frame(height: Self.cardHeight)
+            .id("bg")
+          Canopy.Drawing(
+            TextDrawing(
+              "\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")",
+              fontSize: 16
+            )
           )
-          .viewModifier(CardModifier(model: model, id: counter.id))
+          .id("label")
         }
-      )
-    )
+        .id(counter.id)
+        .viewModifier(CardModifier(model: model, id: counter.id))
+      }
+    }
   }
 }

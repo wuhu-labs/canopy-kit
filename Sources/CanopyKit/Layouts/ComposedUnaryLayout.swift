@@ -12,16 +12,16 @@ import CoreGraphics
 ///
 /// This means `node.padding(10).frame(width: 200)` produces a single layout
 /// node instead of two nested ones.
-public struct ComposedUnaryLayout: Layout, Equatable {
-  public var outer: AnyLayout
-  public var inner: AnyLayout
+struct ComposedUnaryLayout: Layout, Equatable {
+  var outer: AnyLayout
+  var inner: AnyLayout
 
-  public init(outer: AnyLayout, inner: AnyLayout) {
+  init(outer: AnyLayout, inner: AnyLayout) {
     self.outer = outer
     self.inner = inner
   }
 
-  public func layout(
+  func layout(
     subviews: [LayoutSubview],
     proposal: ProposedSize
   ) -> (size: CGSize, placements: [LayoutPlacement]) {
@@ -55,7 +55,7 @@ public struct ComposedUnaryLayout: Layout, Equatable {
     return (size: outerResult.size, placements: placements)
   }
 
-  public static func == (lhs: Self, rhs: Self) -> Bool {
+  static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.outer.isEquivalent(to: rhs.outer) && lhs.inner.isEquivalent(to: rhs.inner)
   }
 }

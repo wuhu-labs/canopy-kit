@@ -3,13 +3,13 @@ import IdentifiedCollections
 import os.log
 import SwiftUI
 
-public enum PrimitiveCommitment: @unchecked Sendable {
-  case path(Path)
-  case customDrawing(AnyDrawing, Any?)
+struct PrimitiveCommitment: @unchecked Sendable {
+  let primitive: Primitive
+  let value: Any
 }
 
 public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
-  public enum Content: @unchecked Sendable {
+  enum Content: @unchecked Sendable {
     case component(AnyComponent, ResolvedRenderNode)
     case layout(AnyLayout, IdentifiedArrayOf<ResolvedRenderNode>)
     case primitive(Primitive, PrimitiveCommitment?)
@@ -23,9 +23,9 @@ public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
   /// viewport, even when children overflow their parent's frame.
   public let boundingRect: CGRect
   public let values: NodeValues
-  public let content: Content
+  let content: Content
 
-  public init(
+  init(
     id: NodeID,
     frame: CGRect,
     boundingRect: CGRect,
@@ -269,7 +269,6 @@ public final class RenderRuntime {
     case let .primitive(primitive):
       size = measurePrimitive(
         primitive,
-        nodeID: node.id,
         proposal: proposal,
         entry: &entry
       )
@@ -284,8 +283,8 @@ public final class RenderRuntime {
     proposal: ProposedSize,
     origin: CGPoint
   ) -> ResolvedRenderNode {
-    var entry = cache[node.id] ?? CacheEntry()
     let size = measure(node: node, proposal: proposal)
+    var entry = cache[node.id] ?? CacheEntry()
     let frame = CGRect(origin: origin, size: size)
 
     if let existing = entry.lastResolvedRenderNode,
@@ -354,7 +353,6 @@ public final class RenderRuntime {
     case let .primitive(primitive):
       let commitment = makeCommitment(
         primitive,
-        nodeID: node.id,
         size: size,
         entry: &entry
       )
@@ -375,46 +373,35 @@ public final class RenderRuntime {
 
   private func measurePrimitive(
     _ primitive: Primitive,
-    nodeID _: NodeID,
     proposal: ProposedSize,
     entry: inout CacheEntry
   ) -> CGSize {
-    switch primitive {
-    case let .shape(shape):
-      return shape.sizeThatFits(proposal: proposal)
-
-    case let .customDrawing(drawing):
-      if entry.preparationCache == nil {
-        entry.preparationCache = drawing.makeCache()
-      } else {
-        drawing.updateCache(cache: &entry.preparationCache!)
-      }
-      return drawing.sizeThatFits(
-        proposal: proposal,
-        cache: &entry.preparationCache!
-      )
+    let representable = primitive.viewRepresentable
+    if entry.preparationCache == nil {
+      entry.preparationCache = representable.makeCache()
+    } else {
+      representable.updateCache(cache: &entry.preparationCache!)
     }
+    return representable.sizeThatFits(
+      proposal: proposal,
+      cache: &entry.preparationCache!
+    )
   }
 
   private func makeCommitment(
     _ primitive: Primitive,
-    nodeID _: NodeID,
     size: CGSize,
     entry: inout CacheEntry
   ) -> PrimitiveCommitment {
-    switch primitive {
-    case let .shape(shape):
-      let commitment = PrimitiveCommitment.path(
-        shape.path(in: CGRect(origin: .zero, size: size))
+    let commitment = PrimitiveCommitment(
+      primitive: primitive,
+      value: primitive.viewRepresentable.makeCommitment(
+        in: CGRect(origin: .zero, size: size),
+        cache: entry.preparationCache!
       )
-      entry.commitment = commitment
-      return commitment
-
-    case let .customDrawing(drawing):
-      let commitment = PrimitiveCommitment.customDrawing(drawing, entry.preparationCache)
-      entry.commitment = commitment
-      return commitment
-    }
+    )
+    entry.commitment = commitment
+    return commitment
   }
 
   private func cachedSize(for id: NodeID, proposal: ProposedSize) -> CGSize? {
@@ -442,7 +429,7 @@ private func canReusePreparationCache(from oldNode: ResolvedNode?, to newNode: R
   guard let oldNode else { return false }
 
   switch (oldNode.content, newNode.content) {
-  case (.primitive(.customDrawing(_)), .primitive(.customDrawing(_))):
+  case (.primitive, .primitive):
     return true
   default:
     return false

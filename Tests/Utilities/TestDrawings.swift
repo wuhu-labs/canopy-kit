@@ -9,18 +9,19 @@ struct FixedSizeDrawing: CustomDrawing {
   var width: CGFloat
   var height: CGFloat
 
-  struct Cache {}
-  func makeCache() -> Cache {
-    Cache()
-  }
+  typealias Commitment = CGRect
 
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Void) -> CGSize {
     let w = proposal.width.map { min(width, $0) } ?? width
     let h = proposal.height.map { min(height, $0) } ?? height
     return CGSize(width: w, height: h)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 // MARK: - Flexible Drawing
@@ -31,35 +32,56 @@ struct FlexibleDrawing: CustomDrawing {
   var idealWidth: CGFloat = 10
   var idealHeight: CGFloat = 10
 
-  struct Cache {}
-  func makeCache() -> Cache {
-    Cache()
-  }
+  typealias Commitment = CGRect
 
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Void) -> CGSize {
     CGSize(
       width: proposal.width ?? idealWidth,
       height: proposal.height ?? idealHeight
     )
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
+    bounds
+  }
+
+  func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
 // MARK: - Convenience Constructors
 
 func fixedLeaf(width: CGFloat, height: CGFloat) -> RenderNode {
-  .leaf(AnyDrawing(FixedSizeDrawing(width: width, height: height)))
+  let drawing = FixedSizeDrawing(width: width, height: height)
+  let nodeID = NodeID(rawValue: Int.random(in: 1 ... Int.max))
+  let resolvedNode = ResolvedNode(
+    id: nodeID,
+    content: .primitive(.init(drawing))
+  )
+  return RenderNode(
+    .primitive(.init(drawing)),
+    nodeID: nodeID,
+    resolvedNode: resolvedNode
+  )
 }
 
-func fixedDrawing(width: CGFloat, height: CGFloat) -> AnyDrawing {
-  AnyDrawing(FixedSizeDrawing(width: width, height: height))
+func fixedDrawing(width: CGFloat, height: CGFloat) -> FixedSizeDrawing {
+  FixedSizeDrawing(width: width, height: height)
 }
 
 func flexibleLeaf(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> RenderNode {
-  .leaf(AnyDrawing(FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight)))
+  let drawing = FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight)
+  let nodeID = NodeID(rawValue: Int.random(in: 1 ... Int.max))
+  let resolvedNode = ResolvedNode(
+    id: nodeID,
+    content: .primitive(.init(drawing))
+  )
+  return RenderNode(
+    .primitive(.init(drawing)),
+    nodeID: nodeID,
+    resolvedNode: resolvedNode
+  )
 }
 
-func flexibleDrawing(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> AnyDrawing {
-  AnyDrawing(FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight))
+func flexibleDrawing(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> FlexibleDrawing {
+  FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight)
 }

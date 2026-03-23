@@ -1,5 +1,4 @@
 import CanopyKit
-import IdentifiedCollections
 import Observation
 import SwiftUI
 
@@ -69,11 +68,7 @@ struct SessionDemoView: View {
 
       Divider()
 
-      ComponentTreeView(
-        root: AnyComponent(
-          SessionRootComponent(model: model)
-        )
-      )
+      ComponentTreeView(root: SessionRootComponent(model: model))
       .autoScrollWhenHeightChanges(model.streamingMessageID != nil)
     }
     .frame(maxWidth: 800)
@@ -174,20 +169,16 @@ private func makeMockSessionModel() -> ChatSessionModel {
         let model: ChatSessionModel
 
         func body() -> Node {
-          .layout(
-            AnyLayout(VStackLayout(spacing: 0)),
-            children: IdentifiedArray(
-              uniqueElements: model.messages.map { msg in
-                // Each message is a stable component
-                IdentifiedNode.component(key: msg.id, ...)
-              }
-            )
-          )
+          Canopy.VStack(spacing: 0) {
+            for msg in model.messages {
+              MessageComponent(...).id(msg.id)
+            }
+          }
         }
       }
       ```
 
-      The `IdentifiedArray` with `key: msg.id` ensures each message maintains its identity across re-renders.
+      The explicit `.id(msg.id)` ensures each message maintains its identity across re-renders.
       """,
       timestamp: now.addingTimeInterval(-240),
       toolCalls: [

@@ -50,14 +50,14 @@ public protocol Layout: Sendable {
 
 // MARK: - AnyLayout
 
-public struct AnyLayout: @unchecked Sendable {
+struct AnyLayout: @unchecked Sendable {
   private let value: any Layout
 
-  public init(_ layout: some Layout) {
+  init(_ layout: some Layout) {
     value = layout
   }
 
-  public func layout(
+  func layout(
     subviews: [LayoutSubview],
     proposal: ProposedSize
   ) -> (size: CGSize, placements: [LayoutPlacement]) {

@@ -3,21 +3,17 @@ import IdentifiedCollections
 
 /// A persistent node in the render tree.
 public final class RenderNode {
-  public enum Content {
+  enum Content {
     case component(AnyComponent, RenderNode)
     case primitive(Primitive)
     case container(AnyLayout, [RenderNode])
-
-    public static func leaf(_ drawing: AnyDrawing) -> Self {
-      .primitive(.customDrawing(drawing))
-    }
   }
 
   public let nodeID: NodeID
 
   public var values: NodeValues
 
-  public var content: Content {
+  var content: Content {
     didSet {
       updateChildParents(from: oldValue, to: content)
     }
@@ -33,7 +29,7 @@ public final class RenderNode {
   public internal(set) var frame: CGRect = .zero
   public internal(set) var primitiveCache: Any?
 
-  public init(
+  init(
     _ content: Content,
     nodeID: NodeID,
     values: NodeValues = NodeValues(),
@@ -46,26 +42,16 @@ public final class RenderNode {
     updateChildParents(from: nil, to: content)
   }
 
-  public static func leaf(
-    _ drawing: AnyDrawing,
+  public static func container(
+    _ layout: some Layout,
+    _ children: [RenderNode],
     nodeID: NodeID? = nil,
     values: NodeValues = NodeValues()
   ) -> RenderNode {
-    let nodeID = nodeID ?? temporaryNodeID()
-    let resolved = ResolvedNode(
-      id: nodeID,
-      content: .primitive(.customDrawing(drawing)),
-      values: values
-    )
-    return RenderNode(
-      .primitive(.customDrawing(drawing)),
-      nodeID: nodeID,
-      values: values,
-      resolvedNode: resolved
-    )
+    Self.container(AnyLayout(layout), children, nodeID: nodeID, values: values)
   }
 
-  public static func container(
+  static func container(
     _ layout: AnyLayout,
     _ children: [RenderNode],
     nodeID: NodeID? = nil,
@@ -209,16 +195,13 @@ public extension RenderNode {
   }
 
   private func measurePrimitive(_ primitive: Primitive, proposal: ProposedSize) -> CGSize {
-    switch primitive {
-    case let .shape(shape):
-      return shape.sizeThatFits(proposal: proposal)
-
-    case let .customDrawing(drawing):
-      if primitiveCache == nil {
-        primitiveCache = drawing.makeCache()
-      }
-      return drawing.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
+    let representable = primitive.viewRepresentable
+    if primitiveCache == nil {
+      primitiveCache = representable.makeCache()
+    } else {
+      representable.updateCache(cache: &primitiveCache!)
     }
+    return representable.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
   }
 }
 

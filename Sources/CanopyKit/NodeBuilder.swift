@@ -19,6 +19,12 @@ public struct NodeBuilder {
     [IdentifiedNode(id: _AutoKey.unkeyed, node: node)]
   }
 
+  /// Bare Component expression — auto-keyed by position
+  @MainActor
+  public static func buildExpression(_ component: some Component) -> [IdentifiedNode] {
+    [Node.component(component).id(_AutoKey.unkeyed)]
+  }
+
   /// Variadic block
   public static func buildBlock(_ components: [IdentifiedNode]...) -> [IdentifiedNode] {
     var result: [IdentifiedNode] = []
