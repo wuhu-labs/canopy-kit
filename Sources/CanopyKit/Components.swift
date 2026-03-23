@@ -82,15 +82,34 @@ public extension Node {
   }
 
   static func drawing(_ drawing: AnyDrawing, values: NodeValues = NodeValues()) -> Self {
-    primitive(.customDrawing(drawing), values: values)
+    primitive(.drawing(drawing), values: values)
+  }
+
+  static func drawing(_ drawing: some CustomDrawing, values: NodeValues = NodeValues()) -> Self {
+    Self.drawing(AnyDrawing(drawing), values: values)
   }
 
   static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
     primitive(.shape(shape), values: values)
   }
 
+  static func shape(_ shape: some ShapePrimitive, values: NodeValues = NodeValues()) -> Self {
+    Self.shape(AnyShape(shape), values: values)
+  }
+
+  static func shape(_ shape: some Shape, values: NodeValues = NodeValues()) -> Self {
+    Self.shape(AnyShape(shape), values: values)
+  }
+
   static func view(_ representable: AnyViewRepresentable, values: NodeValues = NodeValues()) -> Self {
-    primitive(.customView(representable), values: values)
+    primitive(.view(representable), values: values)
+  }
+
+  static func view(
+    _ representable: some CustomViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    view(AnyViewRepresentable(representable), values: values)
   }
 
   // MARK: Leaf Factories
@@ -161,6 +180,14 @@ public extension IdentifiedNode {
     Self(id: key, node: .drawing(drawing, values: values))
   }
 
+  static func drawing(
+    key: some Hashable,
+    _ drawing: some CustomDrawing,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .drawing(AnyDrawing(drawing), values: values))
+  }
+
   static func shape(
     key: some Hashable,
     _ shape: AnyShape,
@@ -169,12 +196,36 @@ public extension IdentifiedNode {
     Self(id: key, node: .shape(shape, values: values))
   }
 
+  static func shape(
+    key: some Hashable,
+    _ shape: some ShapePrimitive,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .shape(AnyShape(shape), values: values))
+  }
+
+  static func shape(
+    key: some Hashable,
+    _ shape: some Shape,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .shape(AnyShape(shape), values: values))
+  }
+
   static func view(
     key: some Hashable,
     _ representable: AnyViewRepresentable,
     values: NodeValues = NodeValues()
   ) -> Self {
     Self(id: key, node: .view(representable, values: values))
+  }
+
+  static func view(
+    key: some Hashable,
+    _ representable: some CustomViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self(id: key, node: .view(AnyViewRepresentable(representable), values: values))
   }
 }
 
@@ -288,7 +339,7 @@ public final class ComponentRenderer {
       ),
     ]
     dirtyIDs = [.root]
-    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.customDrawing(AnyDrawing(PlaceholderDrawing()))))
+    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.drawing(AnyDrawing(PlaceholderDrawing()))))
     refresh()
   }
 

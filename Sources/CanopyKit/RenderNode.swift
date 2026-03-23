@@ -9,7 +9,7 @@ public final class RenderNode {
     case container(AnyLayout, [RenderNode])
 
     public static func leaf(_ drawing: AnyDrawing) -> Self {
-      .primitive(.customDrawing(drawing))
+      .primitive(.drawing(drawing))
     }
   }
 
@@ -54,11 +54,11 @@ public final class RenderNode {
     let nodeID = nodeID ?? temporaryNodeID()
     let resolved = ResolvedNode(
       id: nodeID,
-      content: .primitive(.customDrawing(drawing)),
+      content: .primitive(.drawing(drawing)),
       values: values
     )
     return RenderNode(
-      .primitive(.customDrawing(drawing)),
+      .primitive(.drawing(drawing)),
       nodeID: nodeID,
       values: values,
       resolvedNode: resolved

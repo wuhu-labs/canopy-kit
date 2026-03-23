@@ -71,7 +71,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
     )
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.customView(representable))
+      content: .primitive(.view(representable))
     )
 
     let renderRoot = runtime.layout(
@@ -84,11 +84,12 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
       Issue.record("Expected primitive render node")
       return
     }
-    guard case .customView = commitment else {
+    guard let commitment else {
       Issue.record("Expected custom view commitment, got \(String(describing: commitment))")
       return
     }
 
+    #expect(commitment.primitive.isEquivalent(to: .view(representable)))
     #expect(leaf.frame.size.width == 120)
     #expect(leaf.frame.size.height == 30)
   }
@@ -100,7 +101,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
     )
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.customView(representable))
+      content: .primitive(.view(representable))
     )
 
     let size = runtime.sizeThatFits(
@@ -118,7 +119,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
 
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.customView(
+      content: .primitive(.view(
         AnyViewRepresentable(TrackingViewRepresentable(token: 1, recorder: recorder))
       ))
     )
@@ -126,7 +127,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
 
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.customView(
+      content: .primitive(.view(
         AnyViewRepresentable(TrackingViewRepresentable(token: 2, recorder: recorder))
       ))
     )
@@ -151,11 +152,11 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
         [
           ResolvedNode(
             id: NodeID(rawValue: 2),
-            content: .primitive(.customView(view1))
+            content: .primitive(.view(view1))
           ),
           ResolvedNode(
             id: NodeID(rawValue: 3),
-            content: .primitive(.customView(view2))
+            content: .primitive(.view(view2))
           ),
         ]
       )
@@ -188,13 +189,13 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
   }
 
   @Test func primitiveIsEquivalentForCustomView() {
-    let a = Primitive.customView(AnyViewRepresentable(
+    let a = Primitive.view(AnyViewRepresentable(
       FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
     ))
-    let b = Primitive.customView(AnyViewRepresentable(
+    let b = Primitive.view(AnyViewRepresentable(
       FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
     ))
-    let c = Primitive.customDrawing(fixedDrawing(width: 100, height: 20))
+    let c = Primitive.drawing(fixedDrawing(width: 100, height: 20))
 
     #expect(a.isEquivalent(to: b))
     #expect(!a.isEquivalent(to: c))
@@ -210,10 +211,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
       Issue.record("Expected primitive content")
       return
     }
-    guard case .customView = primitive else {
-      Issue.record("Expected customView primitive")
-      return
-    }
+    #expect(primitive.isEquivalent(to: .view(representable)))
   }
 
   @Test func identifiedNodeConvenienceFactoryCreatesCustomViewPrimitive() {
@@ -226,10 +224,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
       Issue.record("Expected primitive content")
       return
     }
-    guard case .customView = primitive else {
-      Issue.record("Expected customView primitive")
-      return
-    }
+    #expect(primitive.isEquivalent(to: .view(representable)))
     #expect(identified.id == AnyHashable("test"))
   }
 }

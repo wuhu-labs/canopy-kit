@@ -131,10 +131,9 @@ private struct VisibleRenderNodeView: View {
   private func nodeContent(_ node: ResolvedRenderNode) -> some View {
     switch node.content {
     case let .primitive(_, commitment):
-      switch commitment {
-      case let .customView(representable, storedCache):
-        ViewRepresentableCanvas(representable: representable, storedCache: storedCache)
-      case nil:
+      if let commitment {
+        PrimitiveCanvas(commitment: commitment)
+      } else {
         Color.clear
       }
 
@@ -152,11 +151,12 @@ private struct VisibleRenderNodeView: View {
   }
 }
 
-private struct ViewRepresentableCanvas: View {
-  let representable: AnyViewRepresentable
-  let storedCache: Any?
+private struct PrimitiveCanvas: View {
+  let commitment: PrimitiveCommitment
 
   var body: some View {
+    let representable = commitment.primitive.viewRepresentable
+    let storedCache = commitment.storedCache
     var cache = storedCache ?? representable.makeCache()
     representable.makeView(cache: &cache)
   }

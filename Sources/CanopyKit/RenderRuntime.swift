@@ -3,8 +3,9 @@ import IdentifiedCollections
 import os.log
 import SwiftUI
 
-public enum PrimitiveCommitment: @unchecked Sendable {
-  case customView(AnyViewRepresentable, Any?)
+public struct PrimitiveCommitment: @unchecked Sendable {
+  let primitive: Primitive
+  let storedCache: Any?
 }
 
 public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
@@ -268,7 +269,6 @@ public final class RenderRuntime {
     case let .primitive(primitive):
       size = measurePrimitive(
         primitive,
-        nodeID: node.id,
         proposal: proposal,
         entry: &entry
       )
@@ -353,8 +353,6 @@ public final class RenderRuntime {
     case let .primitive(primitive):
       let commitment = makeCommitment(
         primitive,
-        nodeID: node.id,
-        size: size,
         entry: &entry
       )
       renderNode = ResolvedRenderNode(
@@ -374,7 +372,6 @@ public final class RenderRuntime {
 
   private func measurePrimitive(
     _ primitive: Primitive,
-    nodeID _: NodeID,
     proposal: ProposedSize,
     entry: inout CacheEntry
   ) -> CGSize {
@@ -392,13 +389,11 @@ public final class RenderRuntime {
 
   private func makeCommitment(
     _ primitive: Primitive,
-    nodeID _: NodeID,
-    size: CGSize,
     entry: inout CacheEntry
   ) -> PrimitiveCommitment {
-    let commitment = PrimitiveCommitment.customView(
-      primitive.viewRepresentable,
-      entry.preparationCache
+    let commitment = PrimitiveCommitment(
+      primitive: primitive,
+      storedCache: entry.preparationCache
     )
     entry.commitment = commitment
     return commitment

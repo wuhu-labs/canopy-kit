@@ -3,33 +3,61 @@ import SwiftUI
 
 // MARK: - Primitive
 
-public enum Primitive: @unchecked Sendable {
-  case shape(AnyShape)
-  case customDrawing(AnyDrawing)
-  case customView(AnyViewRepresentable)
+public struct Primitive: @unchecked Sendable {
+  let representable: AnyViewRepresentable
 
-  func isEquivalent(to other: Primitive) -> Bool {
-    switch (self, other) {
-    case let (.shape(lhs), .shape(rhs)):
-      lhs.isEquivalent(to: rhs)
-    case let (.customDrawing(lhs), .customDrawing(rhs)):
-      lhs.isEquivalent(to: rhs)
-    case let (.customView(lhs), .customView(rhs)):
-      lhs.isEquivalent(to: rhs)
-    default:
-      false
-    }
+  public init(_ representable: AnyViewRepresentable) {
+    self.representable = representable
+  }
+
+  public init(_ representable: some CustomViewRepresentable) {
+    self.init(AnyViewRepresentable(representable))
+  }
+
+  public static func view(_ representable: AnyViewRepresentable) -> Self {
+    Self(representable)
+  }
+
+  public static func view(_ representable: some CustomViewRepresentable) -> Self {
+    Self(representable)
+  }
+
+  public static func drawing(_ drawing: AnyDrawing) -> Self {
+    Self(AnyViewRepresentable(drawing: drawing))
+  }
+
+  public static func drawing(_ drawing: some CustomDrawing) -> Self {
+    Self.drawing(AnyDrawing(drawing))
+  }
+
+  public static func shape(_ shape: AnyShape) -> Self {
+    Self(AnyViewRepresentable(shape: shape))
+  }
+
+  public static func shape(_ shape: some ShapePrimitive) -> Self {
+    Self.shape(AnyShape(shape))
+  }
+
+  public static func shape(_ shape: some Shape) -> Self {
+    Self.shape(AnyShape(shape))
+  }
+
+  @available(*, deprecated, renamed: "drawing")
+  public static func customDrawing(_ drawing: AnyDrawing) -> Self {
+    Self.drawing(drawing)
+  }
+
+  @available(*, deprecated, renamed: "view")
+  public static func customView(_ representable: AnyViewRepresentable) -> Self {
+    Self.view(representable)
+  }
+
+  func isEquivalent(to other: Self) -> Bool {
+    representable.isEquivalent(to: other.representable)
   }
 
   var viewRepresentable: AnyViewRepresentable {
-    switch self {
-    case let .shape(shape):
-      AnyViewRepresentable(shape: shape)
-    case let .customDrawing(drawing):
-      AnyViewRepresentable(drawing: drawing)
-    case let .customView(representable):
-      representable
-    }
+    representable
   }
 }
 
