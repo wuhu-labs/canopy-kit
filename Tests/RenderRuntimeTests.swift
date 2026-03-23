@@ -76,7 +76,7 @@ private struct TrackingDrawing: CustomDrawing {
     #expect(view?.children.first?.children.count == 1)
   }
 
-  @Test func shapePrimitiveProducesPathCommitment() throws {
+  @Test func shapePrimitiveProducesViewCommitment() throws {
     let runtime = RenderRuntime()
 
     var values = NodeValues()
@@ -101,13 +101,38 @@ private struct TrackingDrawing: CustomDrawing {
       Issue.record("Expected primitive render node")
       return
     }
-    guard case let .path(path) = commitment else {
-      Issue.record("Expected shape path commitment")
+    guard case .customView = commitment else {
+      Issue.record("Expected shape view commitment")
       return
     }
 
-    #expect(path.boundingRect.size.width == 80)
+    #expect(leaf.frame.width == 80)
     #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
+  }
+
+  @Test func customDrawingPrimitiveProducesViewCommitment() throws {
+    let runtime = RenderRuntime()
+    let root = ResolvedNode(
+      id: .root,
+      content: .primitive(.customDrawing(fixedDrawing(width: 80, height: 20)))
+    )
+
+    let renderRoot = runtime.layout(
+      root: root,
+      proposal: ProposedSize(width: 100, height: nil)
+    )
+
+    let leaf = try #require(renderRoot.leaves().first)
+    guard case let .primitive(_, commitment) = leaf.content else {
+      Issue.record("Expected primitive render node")
+      return
+    }
+    guard case .customView = commitment else {
+      Issue.record("Expected custom drawing view commitment")
+      return
+    }
+
+    #expect(leaf.frame.size == CGSize(width: 80, height: 20))
   }
 
   @Test func viewModifierKeyIsSetByViewModifier() {

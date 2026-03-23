@@ -6,3 +6,4 @@ xcuserdata/
 *.trace/
 Benchmarks/
 Derived/
+.DS_Store

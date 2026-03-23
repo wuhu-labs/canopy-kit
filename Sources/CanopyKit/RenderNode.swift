@@ -209,22 +209,13 @@ public extension RenderNode {
   }
 
   private func measurePrimitive(_ primitive: Primitive, proposal: ProposedSize) -> CGSize {
-    switch primitive {
-    case let .shape(shape):
-      return shape.sizeThatFits(proposal: proposal)
-
-    case let .customDrawing(drawing):
-      if primitiveCache == nil {
-        primitiveCache = drawing.makeCache()
-      }
-      return drawing.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
-
-    case let .customView(representable):
-      if primitiveCache == nil {
-        primitiveCache = representable.makeCache()
-      }
-      return representable.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
+    let representable = primitive.viewRepresentable
+    if primitiveCache == nil {
+      primitiveCache = representable.makeCache()
+    } else {
+      representable.updateCache(cache: &primitiveCache!)
     }
+    return representable.sizeThatFits(proposal: proposal, cache: &primitiveCache!)
   }
 }
 

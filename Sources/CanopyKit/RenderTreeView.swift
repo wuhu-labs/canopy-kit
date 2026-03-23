@@ -132,10 +132,6 @@ private struct VisibleRenderNodeView: View {
     switch node.content {
     case let .primitive(_, commitment):
       switch commitment {
-      case let .path(path):
-        path
-      case let .customDrawing(drawing, storedCache):
-        DrawingCanvas(drawing: drawing, storedCache: storedCache)
       case let .customView(representable, storedCache):
         ViewRepresentableCanvas(representable: representable, storedCache: storedCache)
       case nil:
@@ -151,24 +147,6 @@ private struct VisibleRenderNodeView: View {
               y: childView.frame.minY - nodeView.frame.minY
             )
         }
-      }
-    }
-  }
-}
-
-private struct DrawingCanvas: View {
-  let drawing: AnyDrawing
-  let storedCache: Any?
-
-  var body: some View {
-    Canvas { context, size in
-      context.withCGContext { cgContext in
-        var cache = storedCache ?? drawing.makeCache()
-        drawing.draw(
-          in: cgContext,
-          bounds: CGRect(origin: .zero, size: size),
-          cache: &cache
-        )
       }
     }
   }

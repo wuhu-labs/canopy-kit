@@ -20,6 +20,17 @@ public enum Primitive: @unchecked Sendable {
       false
     }
   }
+
+  var viewRepresentable: AnyViewRepresentable {
+    switch self {
+    case let .shape(shape):
+      AnyViewRepresentable(shape: shape)
+    case let .customDrawing(drawing):
+      AnyViewRepresentable(drawing: drawing)
+    case let .customView(representable):
+      representable
+    }
+  }
 }
 
 // MARK: - Primitive Styling

@@ -4,8 +4,6 @@ import os.log
 import SwiftUI
 
 public enum PrimitiveCommitment: @unchecked Sendable {
-  case path(Path)
-  case customDrawing(AnyDrawing, Any?)
   case customView(AnyViewRepresentable, Any?)
 }
 
@@ -380,32 +378,16 @@ public final class RenderRuntime {
     proposal: ProposedSize,
     entry: inout CacheEntry
   ) -> CGSize {
-    switch primitive {
-    case let .shape(shape):
-      return shape.sizeThatFits(proposal: proposal)
-
-    case let .customDrawing(drawing):
-      if entry.preparationCache == nil {
-        entry.preparationCache = drawing.makeCache()
-      } else {
-        drawing.updateCache(cache: &entry.preparationCache!)
-      }
-      return drawing.sizeThatFits(
-        proposal: proposal,
-        cache: &entry.preparationCache!
-      )
-
-    case let .customView(representable):
-      if entry.preparationCache == nil {
-        entry.preparationCache = representable.makeCache()
-      } else {
-        representable.updateCache(cache: &entry.preparationCache!)
-      }
-      return representable.sizeThatFits(
-        proposal: proposal,
-        cache: &entry.preparationCache!
-      )
+    let representable = primitive.viewRepresentable
+    if entry.preparationCache == nil {
+      entry.preparationCache = representable.makeCache()
+    } else {
+      representable.updateCache(cache: &entry.preparationCache!)
     }
+    return representable.sizeThatFits(
+      proposal: proposal,
+      cache: &entry.preparationCache!
+    )
   }
 
   private func makeCommitment(
@@ -414,24 +396,12 @@ public final class RenderRuntime {
     size: CGSize,
     entry: inout CacheEntry
   ) -> PrimitiveCommitment {
-    switch primitive {
-    case let .shape(shape):
-      let commitment = PrimitiveCommitment.path(
-        shape.path(in: CGRect(origin: .zero, size: size))
-      )
-      entry.commitment = commitment
-      return commitment
-
-    case let .customDrawing(drawing):
-      let commitment = PrimitiveCommitment.customDrawing(drawing, entry.preparationCache)
-      entry.commitment = commitment
-      return commitment
-
-    case let .customView(representable):
-      let commitment = PrimitiveCommitment.customView(representable, entry.preparationCache)
-      entry.commitment = commitment
-      return commitment
-    }
+    let commitment = PrimitiveCommitment.customView(
+      primitive.viewRepresentable,
+      entry.preparationCache
+    )
+    entry.commitment = commitment
+    return commitment
   }
 
   private func cachedSize(for id: NodeID, proposal: ProposedSize) -> CGSize? {
@@ -459,9 +429,7 @@ private func canReusePreparationCache(from oldNode: ResolvedNode?, to newNode: R
   guard let oldNode else { return false }
 
   switch (oldNode.content, newNode.content) {
-  case (.primitive(.customDrawing(_)), .primitive(.customDrawing(_))):
-    return true
-  case (.primitive(.customView(_)), .primitive(.customView(_))):
+  case (.primitive, .primitive):
     return true
   default:
     return false

@@ -15,6 +15,7 @@ public protocol CustomViewRepresentable {
   func makeCache() -> Cache
   func updateCache(_ cache: inout Cache)
   func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize
+  @MainActor
   func makeView(cache: inout Cache) -> Body
 }
 
@@ -45,12 +46,23 @@ public struct AnyViewRepresentable: @unchecked Sendable {
     _sizeThatFits(representable: value, proposal: proposal, cache: &cache)
   }
 
+  @MainActor
   func makeView(cache: inout Any) -> AnyView {
     _makeView(representable: value, cache: &cache)
   }
 
   func isEquivalent(to other: AnyViewRepresentable) -> Bool {
     _compareViewRepresentable(lhs: value, rhs: other.value)
+  }
+}
+
+extension AnyViewRepresentable {
+  init(shape: AnyShape) {
+    self.init(ShapeViewRepresentable(shape: shape))
+  }
+
+  init(drawing: AnyDrawing) {
+    self.init(DrawingViewRepresentable(drawing: drawing))
   }
 }
 
@@ -85,6 +97,7 @@ private func _sizeThatFits<V: CustomViewRepresentable>(
   return size
 }
 
+@MainActor
 private func _makeView<V: CustomViewRepresentable>(
   representable: V,
   cache: inout Any
@@ -93,4 +106,82 @@ private func _makeView<V: CustomViewRepresentable>(
   let view = representable.makeView(cache: &typedCache)
   cache = typedCache
   return AnyView(view)
+}
+
+private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
+  let shape: AnyShape
+
+  struct Cache {}
+
+  func makeCache() -> Cache {
+    Cache()
+  }
+
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+    shape.sizeThatFits(proposal: proposal)
+  }
+
+  func makeView(cache _: inout Cache) -> some View {
+    ShapePrimitiveView(shape: shape)
+  }
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.shape.isEquivalent(to: rhs.shape)
+  }
+}
+
+private struct ShapePrimitiveView: View {
+  let shape: AnyShape
+
+  var body: some View {
+    GeometryReader { proxy in
+      shape.path(in: CGRect(origin: .zero, size: proxy.size))
+    }
+  }
+}
+
+private struct DrawingViewRepresentable: CustomViewRepresentable, Equatable {
+  let drawing: AnyDrawing
+
+  struct Cache {
+    var drawingCache: Any
+  }
+
+  func makeCache() -> Cache {
+    Cache(drawingCache: drawing.makeCache())
+  }
+
+  func updateCache(_ cache: inout Cache) {
+    drawing.updateCache(cache: &cache.drawingCache)
+  }
+
+  func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize {
+    drawing.sizeThatFits(proposal: proposal, cache: &cache.drawingCache)
+  }
+
+  func makeView(cache: inout Cache) -> some View {
+    DrawingPrimitiveView(drawing: drawing, storedCache: cache.drawingCache)
+  }
+
+  static func == (lhs: Self, rhs: Self) -> Bool {
+    lhs.drawing.isEquivalent(to: rhs.drawing)
+  }
+}
+
+private struct DrawingPrimitiveView: View {
+  let drawing: AnyDrawing
+  let storedCache: Any
+
+  var body: some View {
+    Canvas { context, size in
+      context.withCGContext { cgContext in
+        var cache = storedCache
+        drawing.draw(
+          in: cgContext,
+          bounds: CGRect(origin: .zero, size: size),
+          cache: &cache
+        )
+      }
+    }
+  }
 }
