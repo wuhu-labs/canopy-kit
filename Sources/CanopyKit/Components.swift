@@ -34,6 +34,12 @@ public protocol Component {
   func body() -> Node
 }
 
+public extension Component {
+  func id(_ id: some Hashable) -> IdentifiedNode {
+    IdentifiedNode(id: id, node: .component(self))
+  }
+}
+
 public struct Node: @unchecked Sendable {
   var content: NodeContent
   public var values: NodeValues
@@ -145,8 +151,8 @@ public extension Node {
   // MARK: Keying
 
   /// Wraps this node in an ``IdentifiedNode`` with the given key.
-  func keyed(_ key: some Hashable) -> IdentifiedNode {
-    IdentifiedNode(id: key, node: self)
+  func id(_ id: some Hashable) -> IdentifiedNode {
+    IdentifiedNode(id: id, node: self)
   }
 }
 
@@ -224,6 +230,49 @@ public extension IdentifiedNode {
     values: NodeValues = NodeValues()
   ) -> Self {
     Self.primitive(key: key, .init(representable), values: values)
+  }
+}
+
+public enum Canopy {
+  public static func Text(_ string: String, fontSize: CGFloat = 14) -> Node {
+    .text(string, fontSize: fontSize)
+  }
+
+  public static func Text(attributedString: CFAttributedString) -> Node {
+    .text(attributedString: attributedString)
+  }
+
+  public static func Drawing(_ drawing: some CustomDrawing, values: NodeValues = NodeValues()) -> Node {
+    .drawing(drawing, values: values)
+  }
+
+  public static func Shape(_ shape: some Shape, values: NodeValues = NodeValues()) -> Node {
+    .shape(shape, values: values)
+  }
+
+  public static func View(
+    _ representable: some CustomViewRepresentable,
+    values: NodeValues = NodeValues()
+  ) -> Node {
+    .view(representable, values: values)
+  }
+
+  public static func VStack(
+    spacing: CGFloat = 0,
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Node {
+    .vstack(spacing: spacing, children)
+  }
+
+  public static func HStack(
+    spacing: CGFloat = 0,
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Node {
+    .hstack(spacing: spacing, children)
+  }
+
+  public static func ZStack(@NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Node {
+    .zstack(children)
   }
 }
 

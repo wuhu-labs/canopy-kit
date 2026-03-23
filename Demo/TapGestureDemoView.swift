@@ -82,20 +82,21 @@ struct TapGestureDemoComponent: Component {
   private static let cardHeight: CGFloat = 40
 
   func body() -> Node {
-    .vstack(spacing: 12) {
+    Canopy.VStack(spacing: 12) {
       for counter in model.counters {
-        IdentifiedNode.layout(key: counter.id, VStackLayout(spacing: 4)) {
-          Node.shape(Capsule())
+        Node.layout(VStackLayout(spacing: 4)) {
+          Canopy.Shape(Capsule())
             .frame(height: Self.cardHeight)
-            .keyed("bg")
-          IdentifiedNode.drawing(
-            key: "label",
+            .id("bg")
+          Canopy.Drawing(
             TextDrawing(
               "\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")",
               fontSize: 16
             )
           )
+          .id("label")
         }
+        .id(counter.id)
         .viewModifier(CardModifier(model: model, id: counter.id))
       }
     }

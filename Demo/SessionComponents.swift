@@ -167,22 +167,18 @@ struct SessionRootComponent: Component {
     let streamingID = model.streamingMessageID
     let isRunning = model.isRunning
 
-    return .vstack(spacing: 0) {
+    return Canopy.VStack(spacing: 0) {
       for message in model.messages {
-        let isStreaming = message.id == streamingID
-        IdentifiedNode.component(
-          key: message.id,
-          MessageComponent(
-            model: message,
-            isStreaming: isStreaming
-          )
+        MessageComponent(
+          model: message,
+          isStreaming: message.id == streamingID
         )
+        .id(message.id)
       }
+
       if isRunning, streamingID == nil {
-        IdentifiedNode.component(
-          key: "__thinking",
-          ThinkingIndicatorComponent()
-        )
+        ThinkingIndicatorComponent()
+          .id("__thinking")
       }
     }
   }
@@ -216,9 +212,8 @@ struct MessageComponent: Component {
     let author = model.author ?? "User"
     let timestamp = timestampFormatter.string(from: model.timestamp)
 
-    return Node.vstack(spacing: 6) {
-      IdentifiedNode.drawing(
-        key: "header",
+    return Canopy.VStack(spacing: 6) {
+      Canopy.Drawing(
         TextDrawing(
           attributedString: makeHeaderAttributedString(
             author: author,
@@ -227,39 +222,35 @@ struct MessageComponent: Component {
           )
         )
       )
+      .id("header")
       if !model.content.isEmpty {
-        IdentifiedNode(
-          id: "bubble",
-          node: Node.text(model.content)
-            .padding(left: 10, top: 8, right: 10, bottom: 8)
-            .viewModifier(BubbleBackground(color: SessionColors.userBubbleBackground))
-        )
+        Canopy.Text(model.content)
+          .padding(left: 10, top: 8, right: 10, bottom: 8)
+          .viewModifier(BubbleBackground(color: SessionColors.userBubbleBackground))
+          .id("bubble")
       }
       for image in model.images {
-        IdentifiedNode.component(
-          key: "img-\(image.id)",
-          ImagePlaceholderComponent(
-            label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
-          )
+        ImagePlaceholderComponent(
+          label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
         )
+        .id("img-\(image.id)")
       }
     }
     .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
 
   private func assistantBody(isStreaming: Bool) -> Node {
-    return Node.vstack(spacing: 6) {
+    return Canopy.VStack(spacing: 6) {
       if isStreaming {
-        IdentifiedNode.drawing(
-          key: "header",
+        Canopy.Drawing(
           TextDrawing(
             attributedString: makeStreamingHeaderAttributedString()
           )
         )
+        .id("header")
       } else {
         let timestamp = timestampFormatter.string(from: model.timestamp)
-        IdentifiedNode.drawing(
-          key: "header",
+        Canopy.Drawing(
           TextDrawing(
             attributedString: makeHeaderAttributedString(
               author: "Agent",
@@ -268,38 +259,27 @@ struct MessageComponent: Component {
             )
           )
         )
+        .id("header")
       }
       if !model.content.isEmpty {
-        IdentifiedNode.component(
-          key: "markdown",
-          RichMarkdownComponent(source: model.content)
-        )
+        RichMarkdownComponent(source: model.content)
+          .id("markdown")
       }
       if isStreaming {
-        IdentifiedNode(
-          id: "cursor",
-          node: .shape(Rectangle()).frame(height: 3)
-        )
+        Canopy.Shape(Rectangle()).frame(height: 3).id("cursor")
       }
       for image in model.images {
-        IdentifiedNode.component(
-          key: "img-\(image.id)",
-          ImagePlaceholderComponent(
-            label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
-          )
+        ImagePlaceholderComponent(
+          label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
         )
+        .id("img-\(image.id)")
       }
       for tc in model.toolCalls {
-        IdentifiedNode.component(
-          key: "tc-\(tc.id)",
-          ToolCallComponent(model: tc)
-        )
+        ToolCallComponent(model: tc)
+          .id("tc-\(tc.id)")
       }
       if !isStreaming {
-        IdentifiedNode(
-          id: "divider",
-          node: .shape(Rectangle()).frame(height: 1)
-        )
+        Canopy.Shape(Rectangle()).frame(height: 1).id("divider")
       }
     }
     .padding(left: 16, top: 12, right: 16, bottom: 4)
@@ -310,7 +290,7 @@ struct MessageComponent: Component {
 
 struct ThinkingIndicatorComponent: Component {
   func body() -> Node {
-    Node.text(attributedString: makeThinkingAttributedString())
+    Canopy.Text(attributedString: makeThinkingAttributedString())
       .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
 }
@@ -325,36 +305,36 @@ struct ToolCallComponent: Component {
   let model: ChatToolCallModel
 
   func body() -> Node {
-    return Node.zstack {
-      Node.shape(Rectangle()).frame(width: 2).keyed("bar")
+    return Canopy.ZStack {
+      Canopy.Shape(Rectangle()).frame(width: 2).id("bar")
 
-      Node.vstack(spacing: 4) {
-        IdentifiedNode.drawing(
-        key: "label",
-        TextDrawing(
-          attributedString: makeToolCallAttributedString(
-            name: model.name,
-            args: model.arguments,
-            isExpanded: model.isExpanded,
-            hasResult: !model.result.isEmpty
+      Canopy.VStack(spacing: 4) {
+        Canopy.Drawing(
+          TextDrawing(
+            attributedString: makeToolCallAttributedString(
+              name: model.name,
+              args: model.arguments,
+              isExpanded: model.isExpanded,
+              hasResult: !model.result.isEmpty
+            )
           )
         )
-      )
+        .id("label")
         if !model.result.isEmpty, model.isExpanded {
-        IdentifiedNode(
-          id: "result-bg",
-          node: Node.text(attributedString: makeMonoAttributedString(
-            model.result,
-            fontSize: 11,
-            color: SessionColors.secondaryTextColor
-          ))
+          Canopy.Text(
+            attributedString: makeMonoAttributedString(
+              model.result,
+              fontSize: 11,
+              color: SessionColors.secondaryTextColor
+            )
+          )
           .padding(left: 8, top: 6, right: 8, bottom: 6)
           .viewModifier(BubbleBackground(color: SessionColors.toolCallBackground))
-        )
+          .id("result-bg")
         }
       }
       .padding(left: 10, top: 4, bottom: 4)
-      .keyed("tool-content")
+      .id("tool-content")
     }
     .viewModifier(TapGestureModifier(action: { [weak model] in
       model?.isExpanded.toggle()
@@ -384,7 +364,7 @@ struct ImagePlaceholderComponent: Component, Equatable {
   let label: String
 
   func body() -> Node {
-    Node.text(attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor))
+    Canopy.Text(attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor))
       .padding(left: 12, top: 20, right: 12, bottom: 20)
       .frame(height: 60)
       .viewModifier(BubbleBackground(color: SessionColors.imagePlaceholderColor))
@@ -402,7 +382,7 @@ struct RichMarkdownComponent: Component, Equatable {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 
-    return .vstack(spacing: 8) {
+    return Canopy.VStack(spacing: 8) {
       for (index, block) in blocks.enumerated() {
         if let node = richBlockNode(block, key: "block-\(index)") {
           node
@@ -424,11 +404,11 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     default: 16
     }
     let attrString = renderInlinesRich(heading.inlineChildren, baseFontSize: fontSize, bold: true)
-    return Node.text(attributedString: attrString).keyed(key)
+    return Canopy.Text(attributedString: attrString).id(key)
 
   case let paragraph as Paragraph:
     let attrString = renderInlinesRich(paragraph.inlineChildren, baseFontSize: 14, bold: false)
-    return Node.text(attributedString: attrString).keyed(key)
+    return Canopy.Text(attributedString: attrString).id(key)
 
   case let codeBlock as CodeBlock:
     return .component(
@@ -440,10 +420,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     )
 
   case _ as ThematicBreak:
-    return IdentifiedNode(
-      id: key,
-      node: .shape(Rectangle()).frame(height: 1)
-    )
+    return Canopy.Shape(Rectangle()).frame(height: 1).id(key)
 
   case let blockQuote as BlockQuote:
     let childNodes = Array(blockQuote.children).enumerated().compactMap { i, child in
@@ -451,37 +428,37 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     }
     guard !childNodes.isEmpty else { return nil }
 
-    return Node.zstack {
-      Node.shape(Rectangle()).frame(width: 3).keyed("bar")
-      Node.vstack(spacing: 6) {
+    return Canopy.ZStack {
+      Canopy.Shape(Rectangle()).frame(width: 3).id("bar")
+      Canopy.VStack(spacing: 6) {
         for childNode in childNodes {
           childNode
         }
       }
       .padding(left: 13)
-      .keyed("content")
+      .id("content")
     }
-    .keyed(key)
+    .id(key)
 
   case let unorderedList as UnorderedList:
     let items = Array(unorderedList.listItems).enumerated().map { i, item in
       richListItemNode(item, marker: "•", key: "li-\(i)")
     }
-    return Node.vstack(spacing: 4) {
+    return Canopy.VStack(spacing: 4) {
       for item in items {
         item
       }
-    }.keyed(key)
+    }.id(key)
 
   case let orderedList as OrderedList:
     let items = Array(orderedList.listItems).enumerated().map { i, item in
       richListItemNode(item, marker: "\(orderedList.startIndex + UInt(i)).", key: "li-\(i)")
     }
-    return Node.vstack(spacing: 4) {
+    return Canopy.VStack(spacing: 4) {
       for item in items {
         item
       }
-    }.keyed(key)
+    }.id(key)
 
   case let table as Markdown.Table:
     return richTableNode(table, key: key)
@@ -489,7 +466,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
   default:
     let text = plainTextFromMarkup(markup)
     guard !text.isEmpty else { return nil }
-    return Node.text(text).keyed(key)
+    return Canopy.Text(text).id(key)
   }
 }
 
@@ -498,14 +475,14 @@ private func richListItemNode(_ item: ListItem, marker: String, key: String) -> 
     richBlockNode(child, key: "item-\(i)")
   }
 
-  return Node.hstack(spacing: 6) {
-    Node.text(marker).keyed("marker")
-    Node.vstack(spacing: 4) {
+  return Canopy.HStack(spacing: 6) {
+    Canopy.Text(marker).id("marker")
+    Canopy.VStack(spacing: 4) {
       for node in childNodes {
         node
       }
-    }.keyed("content")
-  }.keyed(key)
+    }.id("content")
+  }.id(key)
 }
 
 private func richTableNode(_ table: Markdown.Table, key: String) -> IdentifiedNode {
@@ -533,10 +510,9 @@ struct RichCodeBlockComponent: Component, Equatable {
   let language: String?
 
   func body() -> Node {
-    return Node.vstack(spacing: 4) {
+    return Canopy.VStack(spacing: 4) {
       if let language, !language.isEmpty {
-        IdentifiedNode.drawing(
-          key: "lang",
+        Canopy.Drawing(
           TextDrawing(
             attributedString: makeMonoAttributedString(
               language,
@@ -545,9 +521,9 @@ struct RichCodeBlockComponent: Component, Equatable {
             )
           )
         )
+        .id("lang")
       }
-      IdentifiedNode.drawing(
-        key: "code",
+      Canopy.Drawing(
         TextDrawing(
           attributedString: makeMonoAttributedString(
             code.hasSuffix("\n") ? String(code.dropLast()) : code,
@@ -556,6 +532,7 @@ struct RichCodeBlockComponent: Component, Equatable {
           )
         )
       )
+      .id("code")
     }
     .padding(left: 12, top: 8, right: 12, bottom: 8)
     .viewModifier(BubbleBackground(color: CGColor(gray: 0.95, alpha: 1)))

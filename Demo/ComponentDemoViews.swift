@@ -69,12 +69,10 @@ struct ReactiveFeedComponent: Component {
   let model: ReactiveFeedModel
 
   func body() -> Node {
-    .vstack(spacing: 8) {
+    Canopy.VStack(spacing: 8) {
       for paragraph in model.paragraphs {
-        IdentifiedNode.component(
-          key: paragraph.id,
-          ParagraphCardComponent(paragraph: paragraph)
-        )
+        ParagraphCardComponent(paragraph: paragraph)
+          .id(paragraph.id)
       }
     }
   }
@@ -84,18 +82,16 @@ struct ParagraphCardComponent: Component, Equatable {
   let paragraph: ReactiveFeedModel.Paragraph
 
   func body() -> Node {
-    .vstack(spacing: 6) {
-      IdentifiedNode.drawing(
-        key: "label",
-        TextDrawing("Paragraph \(paragraph.id)", fontSize: 12)
-      )
-      IdentifiedNode.drawing(
-        key: "text",
-        TextDrawing(paragraph.text, fontSize: 14)
-      )
-      IdentifiedNode.layout(key: "rule", FrameLayout(height: 1)) {
-        IdentifiedNode.shape(key: "shape", Rectangle())
+    Canopy.VStack(spacing: 6) {
+      Canopy.Drawing(TextDrawing("Paragraph \(paragraph.id)", fontSize: 12))
+        .id("label")
+      Canopy.Drawing(TextDrawing(paragraph.text, fontSize: 14))
+        .id("text")
+      Node.layout(FrameLayout(height: 1)) {
+        Canopy.Shape(Rectangle())
+          .id("shape")
       }
+      .id("rule")
     }
   }
 }
@@ -234,12 +230,10 @@ struct MultiDocumentComponent: Component {
   let appModel: AppModel
 
   func body() -> Node {
-    .vstack(spacing: 16) {
+    Canopy.VStack(spacing: 16) {
       for doc in appModel.documents {
-        IdentifiedNode.component(
-          key: doc.id,
-          SingleDocumentComponent(document: doc)
-        )
+        SingleDocumentComponent(document: doc)
+          .id(doc.id)
       }
     }
   }

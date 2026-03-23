@@ -12,7 +12,7 @@ struct MarkdownDocumentComponent: Component, Equatable {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 
-    return .vstack(spacing: 8) {
+    return Canopy.VStack(spacing: 8) {
       for (index, block) in blocks.enumerated() {
         if let node = blockComponent(block, key: "block-\(index)") {
           node
@@ -35,7 +35,7 @@ struct HeadingBlockComponent: Component, Equatable {
     case 3: 19
     default: 16
     }
-    return .text(text, fontSize: size)
+    return Canopy.Text(text, fontSize: size)
   }
 }
 
@@ -43,7 +43,7 @@ struct ParagraphBlockComponent: Component, Equatable {
   let text: String
 
   func body() -> Node {
-    .text(text)
+    Canopy.Text(text)
   }
 }
 
@@ -51,14 +51,14 @@ struct CodeBlockComponent: Component, Equatable {
   let code: String
 
   func body() -> Node {
-    Node.text(code, fontSize: 13)
+    Canopy.Text(code, fontSize: 13)
       .padding(left: 12, top: 8, right: 12, bottom: 8)
   }
 }
 
 struct ThematicBreakComponent: Component, Equatable {
   func body() -> Node {
-    Node.shape(Rectangle())
+    Canopy.Shape(Rectangle())
       .frame(height: 1)
   }
 }
@@ -67,10 +67,10 @@ struct BlockQuoteComponent: Component, Equatable {
   nonisolated let childBlocks: [BlockData]
 
   func body() -> Node {
-    .zstack {
-      Node.shape(Rectangle()).frame(width: 3).keyed("bar")
+    Canopy.ZStack {
+      Canopy.Shape(Rectangle()).frame(width: 3).id("bar")
 
-      Node.vstack(spacing: 8) {
+      Canopy.VStack(spacing: 8) {
         for (index, block) in childBlocks.enumerated() {
           if let node = blockComponentFromData(block, key: "quote-\(index)") {
             node
@@ -78,7 +78,7 @@ struct BlockQuoteComponent: Component, Equatable {
         }
       }
       .padding(left: 13)
-      .keyed("content")
+      .id("content")
     }
   }
 }
@@ -87,12 +87,10 @@ struct UnorderedListComponent: Component, Equatable {
   nonisolated let items: [ListItemData]
 
   func body() -> Node {
-    .vstack(spacing: 6) {
+    Canopy.VStack(spacing: 6) {
       for (index, item) in items.enumerated() {
-        IdentifiedNode.component(
-          key: "item-\(index)",
-          ListItemComponent(marker: "\u{2022}", item: item)
-        )
+        ListItemComponent(marker: "\u{2022}", item: item)
+          .id("item-\(index)")
       }
     }
   }
@@ -103,15 +101,13 @@ struct OrderedListComponent: Component, Equatable {
   nonisolated let items: [ListItemData]
 
   func body() -> Node {
-    .vstack(spacing: 6) {
+    Canopy.VStack(spacing: 6) {
       for (index, item) in items.enumerated() {
-        IdentifiedNode.component(
-          key: "item-\(index)",
-          ListItemComponent(
-            marker: "\(startIndex + UInt(index)).",
-            item: item
-          )
+        ListItemComponent(
+          marker: "\(startIndex + UInt(index)).",
+          item: item
         )
+        .id("item-\(index)")
       }
     }
   }
@@ -122,16 +118,16 @@ struct ListItemComponent: Component, Equatable {
   nonisolated let item: ListItemData
 
   func body() -> Node {
-    .hstack(spacing: 8) {
-      Node.text(marker).keyed("marker")
+    Canopy.HStack(spacing: 8) {
+      Canopy.Text(marker).id("marker")
 
-      Node.vstack(spacing: 6) {
+      Canopy.VStack(spacing: 6) {
         for (index, block) in item.childBlocks.enumerated() {
           if let node = blockComponentFromData(block, key: "block-\(index)") {
             node
           }
         }
-      }.keyed("content")
+      }.id("content")
     }
   }
 }
@@ -140,7 +136,7 @@ struct FallbackTextComponent: Component, Equatable {
   let text: String
 
   func body() -> Node {
-    .text(text)
+    Canopy.Text(text)
   }
 }
 
@@ -208,28 +204,28 @@ private func extractBlockData(_ markup: Markup) -> BlockData? {
 private func blockComponentFromData(_ block: BlockData, key: String) -> IdentifiedNode? {
   switch block {
   case let .heading(text, level):
-    .component(key: key, HeadingBlockComponent(text: text, level: level))
+    HeadingBlockComponent(text: text, level: level).id(key)
 
   case let .paragraph(text):
-    .component(key: key, ParagraphBlockComponent(text: text))
+    ParagraphBlockComponent(text: text).id(key)
 
   case let .codeBlock(code):
-    .component(key: key, CodeBlockComponent(code: code))
+    CodeBlockComponent(code: code).id(key)
 
   case .thematicBreak:
-    .component(key: key, ThematicBreakComponent())
+    ThematicBreakComponent().id(key)
 
   case let .blockQuote(children):
-    .component(key: key, BlockQuoteComponent(childBlocks: children))
+    BlockQuoteComponent(childBlocks: children).id(key)
 
   case let .unorderedList(items):
-    .component(key: key, UnorderedListComponent(items: items))
+    UnorderedListComponent(items: items).id(key)
 
   case let .orderedList(startIndex, items):
-    .component(key: key, OrderedListComponent(startIndex: startIndex, items: items))
+    OrderedListComponent(startIndex: startIndex, items: items).id(key)
 
   case let .fallbackText(text):
-    .component(key: key, FallbackTextComponent(text: text))
+    FallbackTextComponent(text: text).id(key)
   }
 }
 

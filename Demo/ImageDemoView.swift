@@ -64,12 +64,10 @@ struct ImageGalleryComponent: Component {
   let model: ImageDemoModel
 
   func body() -> Node {
-    .vstack(spacing: 12) {
+    Canopy.VStack(spacing: 12) {
       for item in model.items {
-        IdentifiedNode.component(
-          key: item.id,
-          ImageCardComponent(item: item)
-        )
+        ImageCardComponent(item: item)
+          .id(item.id)
       }
     }
   }
@@ -79,8 +77,8 @@ struct ImageCardComponent: Component, Equatable {
   let item: ImageDemoModel.Item
 
   func body() -> Node {
-    .hstack(spacing: 12) {
-      Node.view(
+    Canopy.HStack(spacing: 12) {
+      Canopy.View(
         ImageViewRepresentable(
           systemName: item.systemName,
           width: 32,
@@ -89,10 +87,10 @@ struct ImageCardComponent: Component, Equatable {
         )
       )
       .frame(width: 32, height: 32)
-      .keyed("icon")
+      .id("icon")
 
-      Node.text(item.label, fontSize: 16)
-        .keyed("label")
+      Canopy.Text(item.label, fontSize: 16)
+        .id("label")
     }
     .padding(left: 12, top: 8, right: 12, bottom: 8)
   }

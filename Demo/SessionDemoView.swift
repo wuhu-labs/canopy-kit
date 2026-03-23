@@ -169,16 +169,16 @@ private func makeMockSessionModel() -> ChatSessionModel {
         let model: ChatSessionModel
 
         func body() -> Node {
-          .vstack(spacing: 0) {
+          Canopy.VStack(spacing: 0) {
             for msg in model.messages {
-              IdentifiedNode.component(key: msg.id, ...)
+              MessageComponent(...).id(msg.id)
             }
           }
         }
       }
       ```
 
-      The explicit `key: msg.id` ensures each message maintains its identity across re-renders.
+      The explicit `.id(msg.id)` ensures each message maintains its identity across re-renders.
       """,
       timestamp: now.addingTimeInterval(-240),
       toolCalls: [
