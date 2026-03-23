@@ -37,7 +37,7 @@ private struct TrackingDrawing: CustomDrawing {
     CGSize(width: 100, height: 20)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
 }
 
 @MainActor

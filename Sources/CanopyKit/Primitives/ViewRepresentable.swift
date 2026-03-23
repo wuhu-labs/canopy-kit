@@ -16,7 +16,7 @@ public protocol CustomViewRepresentable {
   func updateCache(_ cache: inout Cache)
   func sizeThatFits(proposal: ProposedSize, cache: inout Cache) -> CGSize
   @MainActor
-  func makeView(cache: inout Cache) -> Body
+  func makeView(cache: Cache) -> Body
 }
 
 public extension CustomViewRepresentable {
@@ -47,8 +47,8 @@ public struct AnyViewRepresentable: @unchecked Sendable {
   }
 
   @MainActor
-  func makeView(cache: inout Any) -> AnyView {
-    _makeView(representable: value, cache: &cache)
+  func makeView(cache: Any) -> AnyView {
+    _makeView(representable: value, cache: cache)
   }
 
   func isEquivalent(to other: AnyViewRepresentable) -> Bool {
@@ -100,11 +100,10 @@ private func _sizeThatFits<V: CustomViewRepresentable>(
 @MainActor
 private func _makeView<V: CustomViewRepresentable>(
   representable: V,
-  cache: inout Any
+  cache: Any
 ) -> AnyView {
-  var typedCache = cache as! V.Cache
-  let view = representable.makeView(cache: &typedCache)
-  cache = typedCache
+  let typedCache = cache as! V.Cache
+  let view = representable.makeView(cache: typedCache)
   return AnyView(view)
 }
 
@@ -121,7 +120,7 @@ private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
     shape.sizeThatFits(proposal: proposal)
   }
 
-  func makeView(cache _: inout Cache) -> some View {
+  func makeView(cache _: Cache) -> some View {
     ShapePrimitiveView(shape: shape)
   }
 
@@ -159,7 +158,7 @@ private struct DrawingViewRepresentable: CustomViewRepresentable, Equatable {
     drawing.sizeThatFits(proposal: proposal, cache: &cache.drawingCache)
   }
 
-  func makeView(cache: inout Cache) -> some View {
+  func makeView(cache: Cache) -> some View {
     DrawingPrimitiveView(drawing: drawing, storedCache: cache.drawingCache)
   }
 
@@ -175,11 +174,10 @@ private struct DrawingPrimitiveView: View {
   var body: some View {
     Canvas { context, size in
       context.withCGContext { cgContext in
-        var cache = storedCache
         drawing.draw(
           in: cgContext,
           bounds: CGRect(origin: .zero, size: size),
-          cache: &cache
+          cache: storedCache
         )
       }
     }

@@ -83,7 +83,7 @@ public struct TextDrawing: CustomDrawing {
 
   // MARK: - Draw
 
-  public func draw(in context: CGContext, bounds: CGRect, cache: inout Cache) {
+  public func draw(in context: CGContext, bounds: CGRect, cache: Cache) {
     let length = cache.drawingAttributedString.length
     var offset = 0
     // CoreText draws with origin at bottom-left. We work top-down.

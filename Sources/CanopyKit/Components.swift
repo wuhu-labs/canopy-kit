@@ -871,5 +871,5 @@ private struct PlaceholderDrawing: CustomDrawing {
     .zero
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
 }

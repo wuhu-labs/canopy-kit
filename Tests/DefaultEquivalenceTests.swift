@@ -55,7 +55,7 @@ private struct SemanticDrawing: CustomDrawing, Equatable {
     CGSize(width: semanticID, height: 20)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
 }
 
 private struct SemanticShape: ShapePrimitive, Equatable {

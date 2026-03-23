@@ -24,7 +24,7 @@ struct ImageViewRepresentable: CustomViewRepresentable, Equatable {
     return CGSize(width: w, height: h)
   }
 
-  func makeView(cache _: inout Cache) -> some View {
+  func makeView(cache _: Cache) -> some View {
     Image(systemName: systemName)
       .resizable()
       .scaledToFit()

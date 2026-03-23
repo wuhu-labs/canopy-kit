@@ -20,7 +20,7 @@ struct FixedSizeDrawing: CustomDrawing {
     return CGSize(width: w, height: h)
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
 }
 
 // MARK: - Flexible Drawing
@@ -43,7 +43,7 @@ struct FlexibleDrawing: CustomDrawing {
     )
   }
 
-  func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
+  func draw(in _: CGContext, bounds _: CGRect, cache _: Cache) {}
 }
 
 // MARK: - Convenience Constructors

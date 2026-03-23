@@ -23,7 +23,7 @@ private struct FixedSizeViewRepresentable: CustomViewRepresentable {
     return CGSize(width: w, height: h)
   }
 
-  func makeView(cache _: inout Cache) -> some View {
+  func makeView(cache _: Cache) -> some View {
     Text(label)
   }
 }
@@ -55,7 +55,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
     CGSize(width: 100, height: 20)
   }
 
-  func makeView(cache _: inout Cache) -> some View {
+  func makeView(cache _: Cache) -> some View {
     Text("token")
   }
 }
