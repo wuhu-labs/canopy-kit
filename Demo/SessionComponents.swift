@@ -8,9 +8,9 @@ import Observation
 import SwiftUI
 
 #if canImport(AppKit)
-import AppKit
+  import AppKit
 #elseif canImport(UIKit)
-import UIKit
+  import UIKit
 #endif
 
 // MARK: - Observable Models
@@ -45,12 +45,6 @@ struct ChatImageAttachment: Identifiable, Equatable, Sendable {
   let id: String
   var blobURI: String
   var mimeType: String
-
-  init(id: String, blobURI: String, mimeType: String) {
-    self.id = id
-    self.blobURI = blobURI
-    self.mimeType = mimeType
-  }
 }
 
 /// Per-message observable model. Each message is its own observable
@@ -66,7 +60,7 @@ final class ChatMessageModel: Identifiable {
   var timestamp: Date
   var toolCalls: [ChatToolCallModel]
 
-  public enum Role {
+  enum Role {
     case user
     case assistant
   }
@@ -170,10 +164,6 @@ private let timestampFormatter: DateFormatter = {
 struct SessionRootComponent: Component {
   let model: ChatSessionModel
 
-  init(model: ChatSessionModel) {
-    self.model = model
-  }
-
   func body() -> Node {
     let streamingID = model.streamingMessageID
     let isRunning = model.isRunning
@@ -194,7 +184,7 @@ struct SessionRootComponent: Component {
     }
 
     // Thinking indicator: running but no streaming message yet
-    if isRunning && streamingID == nil {
+    if isRunning, streamingID == nil {
       children.append(
         .component(
           key: "__thinking",
@@ -256,26 +246,11 @@ struct MessageComponent: Component {
     // Bubble
     if !model.content.isEmpty {
       children.append(
-        .layout(
-          key: "bubble",
-          AnyLayout(ZStackLayout()),
-          children: [
-            .shape(
-              key: "bg",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.userBubbleBackground),
-            .layout(
-              key: "text-inset",
-              AnyLayout(InsetLayout(left: 10, top: 8, right: 10, bottom: 8)),
-              children: [
-                .drawing(
-                  key: "text",
-                  AnyDrawing(TextDrawing(model.content, fontSize: 14))
-                ),
-              ]
-            ),
-          ]
+        IdentifiedNode(
+          id: "bubble",
+          node: Node.text(model.content)
+            .padding(left: 10, top: 8, right: 10, bottom: 8)
+            .viewModifier(BubbleBackground(color: SessionColors.userBubbleBackground))
         )
       )
     }
@@ -292,19 +267,12 @@ struct MessageComponent: Component {
       )
     }
 
-    return .layout(
-      AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 12)),
-      children: [
-        .layout(
-          key: "content",
-          AnyLayout(VStackLayout(spacing: 6)),
-          children: IdentifiedArray(uniqueElements: children)
-        ),
-      ]
+    return Node.layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: IdentifiedArray(uniqueElements: children)
     )
+    .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
-
-  // MARK: - Assistant Body
 
   private func assistantBody(isStreaming: Bool) -> Node {
     var children: [IdentifiedNode] = []
@@ -348,16 +316,9 @@ struct MessageComponent: Component {
     // Streaming cursor
     if isStreaming {
       children.append(
-        .layout(
-          key: "cursor",
-          AnyLayout(FrameLayout(height: 3)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.streamingCursorColor),
-          ]
+        IdentifiedNode(
+          id: "cursor",
+          node: .shape(AnyShape(Rectangle())).frame(height: 3)
         )
       )
     }
@@ -387,30 +348,18 @@ struct MessageComponent: Component {
     // Divider (not on streaming messages)
     if !isStreaming {
       children.append(
-        .layout(
-          key: "divider",
-          AnyLayout(FrameLayout(height: 1)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.sectionDividerColor),
-          ]
+        IdentifiedNode(
+          id: "divider",
+          node: .shape(AnyShape(Rectangle())).frame(height: 1)
         )
       )
     }
 
-    return .layout(
-      AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 4)),
-      children: [
-        .layout(
-          key: "content",
-          AnyLayout(VStackLayout(spacing: 6)),
-          children: IdentifiedArray(uniqueElements: children)
-        ),
-      ]
+    return Node.layout(
+      AnyLayout(VStackLayout(spacing: 6)),
+      children: IdentifiedArray(uniqueElements: children)
     )
+    .padding(left: 16, top: 12, right: 16, bottom: 4)
   }
 }
 
@@ -418,17 +367,8 @@ struct MessageComponent: Component {
 
 struct ThinkingIndicatorComponent: Component {
   func body() -> Node {
-    .layout(
-      AnyLayout(InsetLayout(left: 16, top: 12, right: 16, bottom: 12)),
-      children: [
-        .drawing(
-          key: "thinking",
-          AnyDrawing(TextDrawing(
-            attributedString: makeThinkingAttributedString()
-          ))
-        ),
-      ]
-    )
+    Node.text(attributedString: makeThinkingAttributedString())
+      .padding(left: 16, top: 12, right: 16, bottom: 12)
   }
 }
 
@@ -460,71 +400,51 @@ struct ToolCallComponent: Component {
     )
 
     // Result — shown in full when expanded, truncated when collapsed
-    if !model.result.isEmpty && model.isExpanded {
+    if !model.result.isEmpty, model.isExpanded {
       children.append(
-        .layout(
-          key: "result-bg",
-          AnyLayout(ZStackLayout()),
-          children: [
-            .shape(
-              key: "bg",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.toolCallBackground),
-            .layout(
-              key: "result-inset",
-              AnyLayout(InsetLayout(left: 8, top: 6, right: 8, bottom: 6)),
-              children: [
-                .drawing(
-                  key: "result-text",
-                  AnyDrawing(TextDrawing(
-                    attributedString: makeMonoAttributedString(
-                      model.result,
-                      fontSize: 11,
-                      color: SessionColors.secondaryTextColor
-                    )
-                  ))
-                ),
-              ]
-            ),
-          ]
+        IdentifiedNode(
+          id: "result-bg",
+          node: Node.text(attributedString: makeMonoAttributedString(
+            model.result,
+            fontSize: 11,
+            color: SessionColors.secondaryTextColor
+          ))
+          .padding(left: 8, top: 6, right: 8, bottom: 6)
+          .viewModifier(BubbleBackground(color: SessionColors.toolCallBackground))
         )
       )
     }
 
     // Wrap in container with left accent bar
-    return .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        // Left bar
-        .layout(
-          key: "bar",
-          AnyLayout(FrameLayout(width: 2)),
-          children: [
-            .shape(
-              key: "bar-rect",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.toolCallBorder),
-          ]
-        ),
-        // Content
-        .layout(
-          key: "tool-content",
-          AnyLayout(InsetLayout(left: 10, top: 4, right: 0, bottom: 4)),
-          children: [
-            .layout(
-              key: "tool-vstack",
-              AnyLayout(VStackLayout(spacing: 4)),
-              children: IdentifiedArray(uniqueElements: children)
-            ),
-          ]
-        ),
-      ]
-    )
-    .onTapGesture { [weak model] in
-      model?.isExpanded.toggle()
+    return Node.zstack {
+      Node.shape(AnyShape(Rectangle())).frame(width: 2).keyed("bar")
+
+      Node.layout(
+        AnyLayout(VStackLayout(spacing: 4)),
+        children: IdentifiedArray(uniqueElements: children)
+      )
+      .padding(left: 10, top: 4, bottom: 4)
+      .keyed("tool-content")
     }
+    .viewModifier(TapGestureModifier(action: { [weak model] in
+      model?.isExpanded.toggle()
+    }))
+  }
+}
+
+private struct TapGestureModifier: ViewModifier {
+  let action: () -> Void
+
+  func body(content: Content) -> some View {
+    content.onTapGesture(perform: action)
+  }
+}
+
+private struct BubbleBackground: ViewModifier {
+  let color: CGColor
+
+  func body(content: Content) -> some View {
+    content.background(Color(cgColor: color))
   }
 }
 
@@ -534,34 +454,10 @@ struct ImagePlaceholderComponent: Component, Equatable {
   let label: String
 
   func body() -> Node {
-    .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        .layout(
-          key: "bg",
-          AnyLayout(FrameLayout(height: 60)),
-          children: [
-            .shape(
-              key: "shape",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, SessionColors.imagePlaceholderColor),
-          ]
-        ),
-        .layout(
-          key: "label-inset",
-          AnyLayout(InsetLayout(left: 12, top: 20, right: 12, bottom: 20)),
-          children: [
-            .drawing(
-              key: "label",
-              AnyDrawing(TextDrawing(
-                attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor)
-              ))
-            ),
-          ]
-        ),
-      ]
-    )
+    Node.text(attributedString: makeMonoAttributedString(label, fontSize: 12, color: SessionColors.secondaryTextColor))
+      .padding(left: 12, top: 20, right: 12, bottom: 20)
+      .frame(height: 60)
+      .viewModifier(BubbleBackground(color: SessionColors.imagePlaceholderColor))
   }
 }
 
@@ -572,22 +468,17 @@ struct ImagePlaceholderComponent: Component, Equatable {
 struct RichMarkdownComponent: Component, Equatable {
   var source: String
 
-  init(source: String) {
-    self.source = source
-  }
-
   func body() -> Node {
     let document = Document(parsing: source)
     let blocks = Array(document.children)
 
-    return .layout(
-      AnyLayout(VStackLayout(spacing: 8)),
-      children: IdentifiedArray(
-        uniqueElements: blocks.enumerated().compactMap { index, block in
-          richBlockNode(block, key: "block-\(index)")
+    return .vstack(spacing: 8) {
+      for (index, block) in blocks.enumerated() {
+        if let node = richBlockNode(block, key: "block-\(index)") {
+          node
         }
-      )
-    )
+      }
+    }
   }
 }
 
@@ -603,17 +494,11 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     default: 16
     }
     let attrString = renderInlinesRich(heading.inlineChildren, baseFontSize: fontSize, bold: true)
-    return .drawing(
-      key: key,
-      AnyDrawing(TextDrawing(attributedString: attrString))
-    )
+    return Node.text(attributedString: attrString).keyed(key)
 
   case let paragraph as Paragraph:
     let attrString = renderInlinesRich(paragraph.inlineChildren, baseFontSize: 14, bold: false)
-    return .drawing(
-      key: key,
-      AnyDrawing(TextDrawing(attributedString: attrString))
-    )
+    return Node.text(attributedString: attrString).keyed(key)
 
   case let codeBlock as CodeBlock:
     return .component(
@@ -625,16 +510,9 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     )
 
   case _ as ThematicBreak:
-    return .layout(
-      key: key,
-      AnyLayout(FrameLayout(height: 1)),
-      children: [
-        .shape(
-          key: "shape",
-          AnyShape(Rectangle())
-        )
-        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.8, alpha: 1)),
-      ]
+    return IdentifiedNode(
+      id: key,
+      node: .shape(AnyShape(Rectangle())).frame(height: 1)
     )
 
   case let blockQuote as BlockQuote:
@@ -647,27 +525,17 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
       key: key,
       AnyLayout(ZStackLayout()),
       children: [
-        .layout(
-          key: "bar",
-          AnyLayout(FrameLayout(width: 3)),
-          children: [
-            .shape(
-              key: "rect",
-              AnyShape(Rectangle())
-            )
-            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.7, alpha: 1)),
-          ]
+        IdentifiedNode(
+          id: "bar",
+          node: .shape(AnyShape(Rectangle())).frame(width: 3)
         ),
-        .layout(
-          key: "content-inset",
-          AnyLayout(InsetLayout(left: 13)),
-          children: [
-            .layout(
-              key: "content",
-              AnyLayout(VStackLayout(spacing: 6)),
-              children: IdentifiedArray(uniqueElements: childNodes)
-            ),
-          ]
+        IdentifiedNode(
+          id: "content",
+          node: Node.layout(
+            AnyLayout(VStackLayout(spacing: 6)),
+            children: IdentifiedArray(uniqueElements: childNodes)
+          )
+          .padding(left: 13)
         ),
       ]
     )
@@ -676,21 +544,21 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
     let items = Array(unorderedList.listItems).enumerated().map { i, item in
       richListItemNode(item, marker: "•", key: "li-\(i)")
     }
-    return .layout(
-      key: key,
-      AnyLayout(VStackLayout(spacing: 4)),
-      children: IdentifiedArray(uniqueElements: items)
-    )
+    return Node.vstack(spacing: 4) {
+      for item in items {
+        item
+      }
+    }.keyed(key)
 
   case let orderedList as OrderedList:
     let items = Array(orderedList.listItems).enumerated().map { i, item in
       richListItemNode(item, marker: "\(orderedList.startIndex + UInt(i)).", key: "li-\(i)")
     }
-    return .layout(
-      key: key,
-      AnyLayout(VStackLayout(spacing: 4)),
-      children: IdentifiedArray(uniqueElements: items)
-    )
+    return Node.vstack(spacing: 4) {
+      for item in items {
+        item
+      }
+    }.keyed(key)
 
   case let table as Markdown.Table:
     return richTableNode(table, key: key)
@@ -698,10 +566,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
   default:
     let text = plainTextFromMarkup(markup)
     guard !text.isEmpty else { return nil }
-    return .drawing(
-      key: key,
-      AnyDrawing(TextDrawing(text, fontSize: 14))
-    )
+    return Node.text(text).keyed(key)
   }
 }
 
@@ -710,27 +575,20 @@ private func richListItemNode(_ item: ListItem, marker: String, key: String) -> 
     richBlockNode(child, key: "item-\(i)")
   }
 
-  return .layout(
-    key: key,
-    AnyLayout(HStackLayout(spacing: 6)),
-    children: [
-      .drawing(
-        key: "marker",
-        AnyDrawing(TextDrawing(marker, fontSize: 14))
-      ),
-      .layout(
-        key: "content",
-        AnyLayout(VStackLayout(spacing: 4)),
-        children: IdentifiedArray(uniqueElements: childNodes)
-      ),
-    ]
-  )
+  return Node.hstack(spacing: 6) {
+    Node.text(marker).keyed("marker")
+    Node.vstack(spacing: 4) {
+      for node in childNodes {
+        node
+      }
+    }.keyed("content")
+  }.keyed(key)
 }
 
 private func richTableNode(_ table: Markdown.Table, key: String) -> IdentifiedNode {
-  let headers = Array(table.head.cells.map { $0.plainText })
+  let headers = Array(table.head.cells.map(\.plainText))
   let rows = Array(table.body.rows.map { row in
-    Array(row.cells.map { $0.plainText })
+    Array(row.cells.map(\.plainText))
   })
 
   var text = headers.joined(separator: " │ ") + "\n"
@@ -782,27 +640,12 @@ struct RichCodeBlockComponent: Component, Equatable {
       )
     )
 
-    return .layout(
-      AnyLayout(ZStackLayout()),
-      children: [
-        .shape(
-          key: "bg",
-          AnyShape(Rectangle())
-        )
-        .value(PrimitiveFillColorKey.self, CGColor(gray: 0.95, alpha: 1)),
-        .layout(
-          key: "inset",
-          AnyLayout(InsetLayout(left: 12, top: 8, right: 12, bottom: 8)),
-          children: [
-            .layout(
-              key: "vstack",
-              AnyLayout(VStackLayout(spacing: 4)),
-              children: IdentifiedArray(uniqueElements: children)
-            ),
-          ]
-        ),
-      ]
+    return Node.layout(
+      AnyLayout(VStackLayout(spacing: 4)),
+      children: IdentifiedArray(uniqueElements: children)
     )
+    .padding(left: 12, top: 8, right: 12, bottom: 8)
+    .viewModifier(BubbleBackground(color: CGColor(gray: 0.95, alpha: 1)))
   }
 }
 

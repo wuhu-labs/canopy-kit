@@ -25,6 +25,35 @@ final class TapGestureDemoModel {
   }
 }
 
+// MARK: - Tap Gesture ViewModifier
+
+/// Example of attaching a tap gesture via an explicit SwiftUI ViewModifier,
+/// using CanopyKit's `.viewModifier(...)` API.
+struct CardModifier: ViewModifier {
+  let model: TapGestureDemoModel
+  let id: Int
+
+  var fill: Color {
+    switch id {
+    case 0: .red
+    case 1: .green
+    case 2: .blue
+    default: fatalError()
+    }
+  }
+
+  func body(content: Content) -> some View {
+    content
+      .foregroundStyle(fill)
+      .contentShape(Rectangle())
+      .onTapGesture {
+        model.increment(id)
+      }
+  }
+}
+
+// MARK: - Demo View
+
 struct TapGestureDemoView: View {
   @State private var model = TapGestureDemoModel()
 
@@ -62,21 +91,13 @@ struct TapGestureDemoComponent: Component {
       AnyLayout(VStackLayout(spacing: 12)),
       children: IdentifiedArray(
         uniqueElements: model.counters.map { counter in
-          let color = Self.colors[counter.id % Self.colors.count]
-          return IdentifiedNode.layout(
+          IdentifiedNode.layout(
             key: counter.id,
             AnyLayout(VStackLayout(spacing: 4)),
             children: [
-              .layout(
-                key: "bg",
-                AnyLayout(FrameLayout(height: Self.cardHeight)),
-                children: [
-                  .shape(
-                    key: "shape",
-                    AnyShape(Capsule())
-                  )
-                  .value(PrimitiveFillColorKey.self, color),
-                ]
+              IdentifiedNode(
+                id: "bg",
+                node: .shape(AnyShape(Capsule())).frame(height: Self.cardHeight)
               ),
               .drawing(
                 key: "label",
@@ -84,9 +105,7 @@ struct TapGestureDemoComponent: Component {
               ),
             ]
           )
-          .onTapGesture { [weak model] in
-            model?.increment(counter.id)
-          }
+          .viewModifier(CardModifier(model: model, id: counter.id))
         }
       )
     )

@@ -22,7 +22,7 @@ public extension CustomDrawing {
 public struct AnyDrawing: @unchecked Sendable {
   private let value: any CustomDrawing
 
-  public init<D: CustomDrawing>(_ drawing: D) {
+  public init(_ drawing: some CustomDrawing) {
     value = drawing
   }
 

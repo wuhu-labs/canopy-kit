@@ -92,15 +92,8 @@ private enum BottomSentinel {
   static let id = "wuhu.renderTree.bottomSentinel"
 }
 
-private struct AutoScrollWhenHeightChangesKey: EnvironmentKey {
-  static let defaultValue = false
-}
-
 public extension EnvironmentValues {
-  var autoScrollWhenHeightChanges: Bool {
-    get { self[AutoScrollWhenHeightChangesKey.self] }
-    set { self[AutoScrollWhenHeightChangesKey.self] = newValue }
-  }
+  @Entry var autoScrollWhenHeightChanges: Bool = false
 }
 
 public extension View {
@@ -118,11 +111,16 @@ private struct VisibleRenderNodeView: View {
     let width = nodeView.frame.width
     let height = nodeView.frame.height
 
-    nodeContent(node)
+    let base = nodeContent(node)
       .frame(width: width, height: height, alignment: .topLeading)
-//      .opacity(nodeView.opacity)
-//      .modifier(NodeClipModifier(path: node.values[ClipPathKey.self], size: CGSize(width: width, height: height)))
-      .modifier(NodeGestureModifier(gesture: node.values[GestureKey.self]))
+
+    let decorated: AnyView = if let viewModifier = node.values[ViewModifierKey.self] {
+      viewModifier.apply(to: base)
+    } else {
+      AnyView(base)
+    }
+
+    decorated
       .offset(
         x: positionsAbsolutely ? nodeView.frame.minX : 0,
         y: positionsAbsolutely ? nodeView.frame.minY : 0
@@ -133,7 +131,14 @@ private struct VisibleRenderNodeView: View {
   private func nodeContent(_ node: ResolvedRenderNode) -> some View {
     switch node.content {
     case let .primitive(_, commitment):
-      PrimitiveCanvas(node: node, commitment: commitment)
+      switch commitment {
+      case let .path(path):
+        path
+      case let .customDrawing(drawing, storedCache):
+        DrawingCanvas(drawing: drawing, storedCache: storedCache)
+      case nil:
+        Color.clear
+      }
 
     case .component, .layout:
       GeometryReader { _ in
@@ -149,91 +154,20 @@ private struct VisibleRenderNodeView: View {
   }
 }
 
-private struct PrimitiveCanvas: View {
-  let node: ResolvedRenderNode
-  let commitment: PrimitiveCommitment?
+private struct DrawingCanvas: View {
+  let drawing: AnyDrawing
+  let storedCache: Any?
 
   var body: some View {
     Canvas { context, size in
-      switch commitment {
-      case let .path(path):
-        if let fillColor = node.values[PrimitiveFillColorKey.self] {
-          context.fill(path, with: .color(Color(cgColor: fillColor)))
-        }
-        if let strokeStyle = node.values[PrimitiveStrokeStyleKey.self] {
-          context.stroke(
-            path,
-            with: .color(Color(cgColor: strokeStyle.color)),
-            lineWidth: strokeStyle.lineWidth
-          )
-        }
-
-      case let .customDrawing(drawing, storedCache):
-        context.withCGContext { cgContext in
-          var cache = storedCache ?? drawing.makeCache()
-          drawing.draw(
-            in: cgContext,
-            bounds: CGRect(origin: .zero, size: size),
-            cache: &cache
-          )
-        }
-
-      case nil:
-        break
+      context.withCGContext { cgContext in
+        var cache = storedCache ?? drawing.makeCache()
+        drawing.draw(
+          in: cgContext,
+          bounds: CGRect(origin: .zero, size: size),
+          cache: &cache
+        )
       }
     }
-  }
-}
-
-private struct NodeClipModifier: ViewModifier {
-  let path: Path?
-  let size: CGSize
-
-  func body(content: Content) -> some View {
-    guard let path else { return AnyView(content) }
-    return AnyView(
-      content.mask(
-        Canvas { context, _ in
-          context.fill(path, with: .color(.white))
-        }
-        .frame(width: size.width, height: size.height)
-      )
-    )
-  }
-}
-
-private struct NodeGestureModifier: ViewModifier {
-  let gesture: NodeGesture?
-
-  func body(content: Content) -> some View {
-    var view = AnyView(content.contentShape(Rectangle()))
-
-    if let onTap = gesture?.onTap {
-      view = AnyView(view.onTapGesture(perform: onTap))
-    }
-    if let onDoubleTap = gesture?.onDoubleTap {
-      view = AnyView(view.onTapGesture(count: 2, perform: onDoubleTap))
-    }
-    if let onLongPress = gesture?.onLongPress {
-      view = AnyView(view.onLongPressGesture(perform: onLongPress))
-    }
-    if let onHover = gesture?.onHover {
-      view = AnyView(view.onHover(perform: onHover))
-    }
-    if gesture?.onDragChanged != nil || gesture?.onDragEnded != nil {
-      view = AnyView(
-        view.gesture(
-          DragGesture()
-            .onChanged { value in
-              gesture?.onDragChanged?(value)
-            }
-            .onEnded { value in
-              gesture?.onDragEnded?(value)
-            }
-        )
-      )
-    }
-
-    return view
   }
 }

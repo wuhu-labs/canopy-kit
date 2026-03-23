@@ -53,7 +53,7 @@ public protocol Layout: Sendable {
 public struct AnyLayout: @unchecked Sendable {
   private let value: any Layout
 
-  public init<L: Layout>(_ layout: L) {
+  public init(_ layout: some Layout) {
     value = layout
   }
 

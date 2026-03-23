@@ -5,9 +5,9 @@ struct CanopyKitDemoApp: App {
   var body: some Scene {
     WindowGroup {
       DemoRootView()
-        #if os(macOS)
+      #if os(macOS)
         .frame(minWidth: 720, minHeight: 540)
-        #endif
+      #endif
     }
   }
 }
@@ -48,7 +48,9 @@ enum DemoKind: String, CaseIterable, Identifiable {
   case tapGesture
   case sessionView
 
-  var id: Self { self }
+  var id: Self {
+    self
+  }
 
   var title: String {
     switch self {

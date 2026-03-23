@@ -65,7 +65,6 @@ public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
 public struct ResolvedRenderNodeView {
   public let node: ResolvedRenderNode
   public let frame: CGRect
-  public let opacity: CGFloat
   public let viewport: CGRect
 
   /// Lazily projects visible children by intersecting each child's bounding
@@ -91,7 +90,6 @@ public struct ResolvedRenderNodeView {
 
     self.node = node
     self.frame = frame
-    self.opacity = node.values[OpacityKey.self]
     self.viewport = viewport
   }
 
@@ -137,8 +135,14 @@ public final class RenderRuntime {
     rootID = root.id
     reconcile(node: root, parentID: nil)
 
-    os_signpost(.end, log: canopyLog, name: "RenderRuntime.reconcile", signpostID: signpostID,
-                "cacheSize=%{public}d", cache.count)
+    os_signpost(
+      .end,
+      log: canopyLog,
+      name: "RenderRuntime.reconcile",
+      signpostID: signpostID,
+      "cacheSize=%{public}d",
+      cache.count
+    )
   }
 
   @discardableResult
@@ -187,11 +191,10 @@ public final class RenderRuntime {
     }
 
     // Collect old child IDs before updating
-    let oldChildIDs: Set<NodeID>
-    if let old = previousResolvedNode {
-      oldChildIDs = Set(old.children.map(\.id))
+    let oldChildIDs: Set<NodeID> = if let old = previousResolvedNode {
+      Set(old.children.map(\.id))
     } else {
-      oldChildIDs = []
+      []
     }
 
     entry.lastResolvedNode = node
@@ -286,8 +289,8 @@ public final class RenderRuntime {
     let frame = CGRect(origin: origin, size: size)
 
     if let existing = entry.lastResolvedRenderNode,
-      entry.lastResolvedNode === node,
-      existing.frame == frame
+       entry.lastResolvedNode === node,
+       existing.frame == frame
     {
       os_signpost(.event, log: canopyLog, name: "renderNodeReused")
       return existing
@@ -327,7 +330,7 @@ public final class RenderRuntime {
 
       let renderChildren = IdentifiedArray(
         uniqueElements: zip(children, result.placements).map { child, placement in
-          return layout(
+          layout(
             node: child,
             proposal: placement.proposal,
             origin: placement.origin
@@ -372,7 +375,7 @@ public final class RenderRuntime {
 
   private func measurePrimitive(
     _ primitive: Primitive,
-    nodeID: NodeID,
+    nodeID _: NodeID,
     proposal: ProposedSize,
     entry: inout CacheEntry
   ) -> CGSize {

@@ -1,7 +1,7 @@
-import Observation
-import SwiftUI
 import CanopyKit
 import IdentifiedCollections
+import Observation
+import SwiftUI
 
 // MARK: - Static Markdown Demo
 
@@ -25,6 +25,7 @@ final class ReactiveFeedModel {
   var paragraphs: [Paragraph] = (0 ..< 12).map { index in
     Paragraph(id: index, text: demoParagraph(index: index))
   }
+
   var nextID = 12
 
   func appendParagraph() {
@@ -130,21 +131,23 @@ final class DocumentModel: Identifiable {
   var visibleCharacterCount: Int
   var visibleMarkdown: String
 
-  var isComplete: Bool { visibleCharacterCount >= fullCharacters.count }
+  var isComplete: Bool {
+    visibleCharacterCount >= fullCharacters.count
+  }
 
   init(id: Int, markdown: String, prefillCount: Int = 0) {
     self.id = id
-    self.fullCharacters = Array(markdown)
+    fullCharacters = Array(markdown)
     let clamped = min(prefillCount, fullCharacters.count)
-    self.visibleCharacterCount = clamped
-    self.visibleMarkdown = String(fullCharacters.prefix(clamped))
+    visibleCharacterCount = clamped
+    visibleMarkdown = String(fullCharacters.prefix(clamped))
   }
 
   /// Append the next batch of characters. Returns true if the document just completed.
   func advance(count: Int = 5) -> Bool {
     guard !isComplete else { return false }
     let end = min(visibleCharacterCount + count, fullCharacters.count)
-    visibleMarkdown.append(contentsOf: fullCharacters[visibleCharacterCount..<end])
+    visibleMarkdown.append(contentsOf: fullCharacters[visibleCharacterCount ..< end])
     visibleCharacterCount = end
     return isComplete
   }
@@ -160,10 +163,10 @@ final class AppModel {
   @ObservationIgnored private var nextDocumentIndex = 0
 
   init(documentCount: Int = 100) {
-    self.totalDocumentCount = documentCount
+    totalDocumentCount = documentCount
     // Pre-fill a batch of completed documents to simulate history
     let prefillCount = max(0, documentCount - 5)
-    for i in 0..<prefillCount {
+    for i in 0 ..< prefillCount {
       let markdown = makeDocumentMarkdown(index: i)
       let doc = DocumentModel(id: i, markdown: markdown, prefillCount: markdown.count)
       documents.append(doc)
@@ -203,7 +206,7 @@ final class AppModel {
     documents.removeAll()
     nextDocumentIndex = 0
     let prefillCount = max(0, totalDocumentCount - 5)
-    for i in 0..<prefillCount {
+    for i in 0 ..< prefillCount {
       let markdown = makeDocumentMarkdown(index: i)
       let doc = DocumentModel(id: i, markdown: markdown, prefillCount: markdown.count)
       documents.append(doc)
@@ -234,7 +237,7 @@ final class AppModel {
     }
 
     let justCompleted = active.advance(count: 5)
-    if justCompleted && nextDocumentIndex < totalDocumentCount {
+    if justCompleted, nextDocumentIndex < totalDocumentCount {
       // Document finished — start the next one. This mutates AppModel.documents.
       let doc = DocumentModel(id: nextDocumentIndex, markdown: makeDocumentMarkdown(index: nextDocumentIndex))
       documents.append(doc)

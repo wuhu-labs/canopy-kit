@@ -1,13 +1,13 @@
+@testable import CanopyKit
 import CoreGraphics
 import struct SwiftUI.Path
 import Testing
-@testable import CanopyKit
 
 private struct SemanticComponent: Component, Equatable {
-  let semanticID: Int
-  let incidentalID: Int
+  nonisolated let semanticID: Int
+  nonisolated let incidentalID: Int
 
-  static func == (lhs: SemanticComponent, rhs: SemanticComponent) -> Bool {
+  nonisolated static func == (lhs: SemanticComponent, rhs: SemanticComponent) -> Bool {
     lhs.semanticID == rhs.semanticID
   }
 
@@ -47,7 +47,9 @@ private struct SemanticDrawing: CustomDrawing, Equatable {
 
   struct Cache {}
 
-  func makeCache() -> Cache { Cache() }
+  func makeCache() -> Cache {
+    Cache()
+  }
 
   func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
     CGSize(width: semanticID, height: 20)

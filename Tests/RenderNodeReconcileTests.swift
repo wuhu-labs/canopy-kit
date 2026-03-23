@@ -1,5 +1,5 @@
-import Testing
 @testable import CanopyKit
+import Testing
 
 private struct EmptyComponent: Component, Equatable {
   func body() -> Node {

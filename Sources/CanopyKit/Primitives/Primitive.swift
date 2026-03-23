@@ -40,11 +40,3 @@ public struct PrimitiveStrokeStyle: @unchecked Sendable {
 public struct PrimitiveStrokeStyleKey: NodeValueKey {
   public static let defaultValue: PrimitiveStrokeStyle? = nil
 }
-
-public struct OpacityKey: NodeValueKey {
-  public static let defaultValue: CGFloat = 1
-}
-
-public struct ClipPathKey: NodeValueKey {
-  public static let defaultValue: Path? = nil
-}

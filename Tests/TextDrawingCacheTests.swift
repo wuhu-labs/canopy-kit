@@ -1,7 +1,7 @@
 import AppKit
+@testable import CanopyKit
 import CoreText
 import Testing
-@testable import CanopyKit
 
 @Suite struct TextDrawingCacheTests {
   @Test func foregroundColorChangeReusesTypesetter() {

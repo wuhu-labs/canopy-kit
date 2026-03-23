@@ -1,8 +1,8 @@
+@testable import CanopyKit
 import CoreGraphics
 import IdentifiedCollections
 import Observation
 import Testing
-@testable import CanopyKit
 
 @Observable
 final class ParagraphModel {

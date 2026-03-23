@@ -4,7 +4,7 @@ public extension RenderNode {
   static func make(from resolved: ResolvedNode) -> RenderNode {
     switch resolved.content {
     case let .component(component, child):
-      return RenderNode(
+      RenderNode(
         .component(component, make(from: child)),
         nodeID: resolved.id,
         values: resolved.values,
@@ -12,7 +12,7 @@ public extension RenderNode {
       )
 
     case let .layout(layout, children):
-      return RenderNode(
+      RenderNode(
         .container(layout, children.map(Self.make(from:))),
         nodeID: resolved.id,
         values: resolved.values,
@@ -20,7 +20,7 @@ public extension RenderNode {
       )
 
     case let .primitive(primitive):
-      return RenderNode(
+      RenderNode(
         .primitive(primitive),
         nodeID: resolved.id,
         values: resolved.values,
@@ -77,10 +77,10 @@ public extension RenderNode {
       case let .container(existingLayout, existingChildren):
         shouldInvalidateLayout =
           !existingLayout.isEquivalent(to: layout)
-          || existingChildren.count != reconciledChildren.count
-          || zip(existingChildren, reconciledChildren).contains(where: { existingChild, child in
-            existingChild !== child
-          })
+            || existingChildren.count != reconciledChildren.count
+            || zip(existingChildren, reconciledChildren).contains(where: { existingChild, child in
+              existingChild !== child
+            })
       default:
         shouldInvalidateLayout = true
       }
@@ -92,12 +92,11 @@ public extension RenderNode {
       return existing
 
     case let .primitive(primitive):
-      let shouldResetPrimitiveCache: Bool
-      switch existing.content {
+      let shouldResetPrimitiveCache: Bool = switch existing.content {
       case let .primitive(existingPrimitive):
-        shouldResetPrimitiveCache = !existingPrimitive.isEquivalent(to: primitive)
+        !existingPrimitive.isEquivalent(to: primitive)
       default:
-        shouldResetPrimitiveCache = true
+        true
       }
 
       existing.content = .primitive(primitive)

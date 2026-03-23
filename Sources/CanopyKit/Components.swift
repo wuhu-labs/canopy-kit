@@ -29,6 +29,7 @@ private struct PendingEntry: Comparable {
   }
 }
 
+@MainActor
 public protocol Component {
   func body() -> Node
 }
@@ -87,6 +88,39 @@ public extension Node {
   static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
     primitive(.shape(shape), values: values)
   }
+
+  // MARK: Leaf Factories
+
+  /// Convenience: creates a text drawing node.
+  static func text(_ string: String, fontSize: CGFloat = 14) -> Self {
+    drawing(AnyDrawing(TextDrawing(string, fontSize: fontSize)))
+  }
+
+  /// Convenience: creates a text drawing node from an attributed string.
+  static func text(attributedString: CFAttributedString) -> Self {
+    drawing(AnyDrawing(TextDrawing(attributedString: attributedString)))
+  }
+
+  // MARK: Layout Convenience (NodeBuilder)
+
+  static func vstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
+    layout(AnyLayout(VStackLayout(spacing: spacing)), children: children())
+  }
+
+  static func hstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
+    layout(AnyLayout(HStackLayout(spacing: spacing)), children: children())
+  }
+
+  static func zstack(@NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
+    layout(AnyLayout(ZStackLayout()), children: children())
+  }
+
+  // MARK: Keying
+
+  /// Wraps this node in an ``IdentifiedNode`` with the given key.
+  func keyed(_ key: some Hashable) -> IdentifiedNode {
+    IdentifiedNode(id: key, node: self)
+  }
 }
 
 public extension IdentifiedNode {
@@ -135,10 +169,11 @@ public extension IdentifiedNode {
 public struct AnyComponent: @unchecked Sendable {
   private let value: any Component
 
-  public init<C: Component>(_ component: C) {
+  public init(_ component: some Component) {
     value = component
   }
 
+  @MainActor
   public func body() -> Node {
     value.body()
   }
@@ -181,8 +216,6 @@ public final class ResolvedNode: Identifiable, @unchecked Sendable {
     }
   }
 }
-
-
 
 @MainActor
 private struct RuntimeEntry {
@@ -240,7 +273,7 @@ public final class ComponentRenderer {
         depth: 0,
         component: root,
         values: NodeValues()
-      )
+      ),
     ]
     dirtyIDs = [.root]
     resolvedRoot = ResolvedNode(id: .root, content: .primitive(.customDrawing(AnyDrawing(PlaceholderDrawing()))))
@@ -767,7 +800,13 @@ private func reusePrimitiveNode(
 /// before the first `refresh()` replaces it.
 private struct PlaceholderDrawing: CustomDrawing {
   struct Cache {}
-  func makeCache() -> Cache { Cache() }
-  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize { .zero }
+  func makeCache() -> Cache {
+    Cache()
+  }
+
+  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
+    .zero
+  }
+
   func draw(in _: CGContext, bounds _: CGRect, cache _: inout Cache) {}
 }

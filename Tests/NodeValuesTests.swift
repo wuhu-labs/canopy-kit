@@ -1,5 +1,5 @@
-import Testing
 @testable import CanopyKit
+import Testing
 
 private struct TestIntKey: NodeValueKey {
   static let defaultValue = 0

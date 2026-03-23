@@ -1,11 +1,13 @@
+@testable import CanopyKit
 import CoreGraphics
 import IdentifiedCollections
 import SwiftUI
 import Testing
-@testable import CanopyKit
 
 private struct StubComponent: Component {
-  func body() -> Node { .primitive(.customDrawing(fixedDrawing(width: 0, height: 0))) }
+  func body() -> Node {
+    .primitive(.customDrawing(fixedDrawing(width: 0, height: 0)))
+  }
 }
 
 private final class DrawingCacheRecorder {
@@ -108,17 +110,16 @@ private struct TrackingDrawing: CustomDrawing {
     #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
   }
 
-  @Test func gestureModifierStoresHandlersInNodeValues() {
-    let tapped = NodeGesture(onTap: {})
-    var values = NodeValues()
-    values[GestureKey.self] = tapped
-    let root = ResolvedNode(
-      id: .root,
-      content: .primitive(.customDrawing(fixedDrawing(width: 60, height: 20))),
-      values: values
-    )
+  @Test func viewModifierKeyIsSetByViewModifier() {
+    struct TestModifier: ViewModifier {
+      func body(content: Content) -> some View {
+        content
+      }
+    }
+    let node = Node.primitive(.customDrawing(fixedDrawing(width: 60, height: 20)))
+      .viewModifier(TestModifier())
 
-    #expect(root.values[GestureKey.self] === tapped)
+    #expect(node.values[ViewModifierKey.self] != nil)
   }
 
   @Test func unchangedResolvedSubtreesArePointerSharedAcrossRefreshes() async throws {
