@@ -9,20 +9,15 @@ struct FixedSizeDrawing: CustomDrawing {
   var width: CGFloat
   var height: CGFloat
 
-  struct Cache {}
   typealias Commitment = CGRect
 
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Void) -> CGSize {
     let w = proposal.width.map { min(width, $0) } ?? width
     let h = proposal.height.map { min(height, $0) } ?? height
     return CGSize(width: w, height: h)
   }
 
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
     bounds
   }
 
@@ -37,21 +32,16 @@ struct FlexibleDrawing: CustomDrawing {
   var idealWidth: CGFloat = 10
   var idealHeight: CGFloat = 10
 
-  struct Cache {}
   typealias Commitment = CGRect
 
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Void) -> CGSize {
     CGSize(
       width: proposal.width ?? idealWidth,
       height: proposal.height ?? idealHeight
     )
   }
 
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
     bounds
   }
 
@@ -65,10 +55,10 @@ func fixedLeaf(width: CGFloat, height: CGFloat) -> RenderNode {
   let nodeID = NodeID(rawValue: Int.random(in: 1 ... Int.max))
   let resolvedNode = ResolvedNode(
     id: nodeID,
-    content: .primitive(.drawing(drawing))
+    content: .primitive(.init(drawing))
   )
   return RenderNode(
-    .primitive(.drawing(drawing)),
+    .primitive(.init(drawing)),
     nodeID: nodeID,
     resolvedNode: resolvedNode
   )
@@ -83,10 +73,10 @@ func flexibleLeaf(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> Render
   let nodeID = NodeID(rawValue: Int.random(in: 1 ... Int.max))
   let resolvedNode = ResolvedNode(
     id: nodeID,
-    content: .primitive(.drawing(drawing))
+    content: .primitive(.init(drawing))
   )
   return RenderNode(
-    .primitive(.drawing(drawing)),
+    .primitive(.init(drawing)),
     nodeID: nodeID,
     resolvedNode: resolvedNode
   )

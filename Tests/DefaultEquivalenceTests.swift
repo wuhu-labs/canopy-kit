@@ -1,5 +1,6 @@
 @testable import CanopyKit
 import CoreGraphics
+import protocol SwiftUI.Shape
 import struct SwiftUI.Path
 import Testing
 
@@ -45,25 +46,20 @@ private struct SemanticDrawing: CustomDrawing, Equatable {
     lhs.semanticID == rhs.semanticID
   }
 
-  struct Cache {}
   typealias Commitment = CGRect
 
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal _: ProposedSize, cache _: inout Void) -> CGSize {
     CGSize(width: semanticID, height: 20)
   }
 
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
     bounds
   }
 
   func draw(in _: CGContext, commitment _: CGRect) {}
 }
 
-private struct SemanticShape: ShapePrimitive, Equatable {
+private struct SemanticShape: Shape, Equatable {
   let semanticID: Int
   let incidentalID: Int
 
@@ -105,15 +101,15 @@ private struct SemanticNodeValueKey: NodeValueKey {
   }
 
   @Test func primitiveDrawingUsesEquatableByDefault() {
-    let lhs = Primitive.drawing(SemanticDrawing(semanticID: 1, incidentalID: 10))
-    let rhs = Primitive.drawing(SemanticDrawing(semanticID: 1, incidentalID: 20))
+    let lhs = Primitive(SemanticDrawing(semanticID: 1, incidentalID: 10))
+    let rhs = Primitive(SemanticDrawing(semanticID: 1, incidentalID: 20))
 
     #expect(lhs.isEquivalent(to: rhs))
   }
 
-  @Test func anyShapeUsesEquatableByDefault() {
-    let lhs = AnyShape(SemanticShape(semanticID: 1, incidentalID: 10))
-    let rhs = AnyShape(SemanticShape(semanticID: 1, incidentalID: 20))
+  @Test func primitiveShapeUsesEquatableByDefault() {
+    let lhs = Primitive(SemanticShape(semanticID: 1, incidentalID: 10))
+    let rhs = Primitive(SemanticShape(semanticID: 1, incidentalID: 20))
 
     #expect(lhs.isEquivalent(to: rhs))
   }

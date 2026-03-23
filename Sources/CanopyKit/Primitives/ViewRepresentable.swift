@@ -9,7 +9,7 @@ import SwiftUI
 /// The protocol mirrors ``CustomDrawing`` — `makeCache`, `updateCache`,
 /// `sizeThatFits` — but replaces the `draw` method with ``makeView``.
 public protocol CustomViewRepresentable {
-  associatedtype Cache
+  associatedtype Cache = Void
   associatedtype Commitment
   associatedtype Body: View
 
@@ -27,13 +27,21 @@ public extension CustomViewRepresentable {
   }
 }
 
+public extension CustomViewRepresentable where Cache == Void {
+  func makeCache() -> Void {}
+}
+
 // MARK: - AnyViewRepresentable
 
-public struct AnyViewRepresentable: @unchecked Sendable {
+struct AnyViewRepresentable: @unchecked Sendable {
   private let value: any CustomViewRepresentable
 
-  public init(_ representable: some CustomViewRepresentable) {
+  init(_ representable: some CustomViewRepresentable) {
     value = representable
+  }
+
+  init(_ shape: some Shape) {
+    self.init(ShapeViewRepresentable(shape: shape))
   }
 
   func makeCache() -> Any {
@@ -59,12 +67,6 @@ public struct AnyViewRepresentable: @unchecked Sendable {
 
   func isEquivalent(to other: AnyViewRepresentable) -> Bool {
     _compareViewRepresentable(lhs: value, rhs: other.value)
-  }
-}
-
-extension AnyViewRepresentable {
-  init(shape: AnyShape) {
-    self.init(ShapeViewRepresentable(shape: shape))
   }
 }
 
@@ -116,31 +118,4 @@ private func _makeCommitment<V: CustomViewRepresentable>(
 ) -> Any {
   let typedCache = cache as! V.Cache
   return representable.makeCommitment(in: bounds, cache: typedCache)
-}
-
-private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
-  let shape: AnyShape
-
-  struct Cache {}
-  typealias Commitment = Path
-
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
-    shape.sizeThatFits(proposal: proposal)
-  }
-
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> Path {
-    shape.path(in: bounds)
-  }
-
-  func makeView(commitment: Path) -> some View {
-    commitment
-  }
-
-  static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.shape.isEquivalent(to: rhs.shape)
-  }
 }

@@ -6,7 +6,7 @@ import SwiftUI
 public struct Primitive: @unchecked Sendable {
   let representable: AnyViewRepresentable
 
-  public init(_ representable: AnyViewRepresentable) {
+  init(_ representable: AnyViewRepresentable) {
     self.representable = representable
   }
 
@@ -14,33 +14,8 @@ public struct Primitive: @unchecked Sendable {
     self.init(AnyViewRepresentable(representable))
   }
 
-  public static func view(_ representable: AnyViewRepresentable) -> Self {
-    Self(representable)
-  }
-
-  public static func view(_ representable: some CustomViewRepresentable) -> Self {
-    Self(representable)
-  }
-
-  public static func drawing(_ drawing: some CustomDrawing) -> Self {
-    Self(drawing)
-  }
-
-  public static func shape(_ shape: AnyShape) -> Self {
-    Self(AnyViewRepresentable(shape: shape))
-  }
-
-  public static func shape(_ shape: some ShapePrimitive) -> Self {
-    Self.shape(AnyShape(shape))
-  }
-
-  public static func shape(_ shape: some Shape) -> Self {
-    Self.shape(AnyShape(shape))
-  }
-
-  @available(*, deprecated, renamed: "view")
-  public static func customView(_ representable: AnyViewRepresentable) -> Self {
-    Self.view(representable)
+  public init(_ shape: some Shape) {
+    self.init(AnyViewRepresentable(shape))
   }
 
   func isEquivalent(to other: Self) -> Bool {

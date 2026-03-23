@@ -6,7 +6,7 @@ import Testing
 
 private struct StubComponent: Component {
   func body() -> Node {
-    .primitive(.drawing(fixedDrawing(width: 0, height: 0)))
+    .primitive(.init(fixedDrawing(width: 0, height: 0)))
   }
 }
 
@@ -56,11 +56,11 @@ private struct TrackingDrawing: CustomDrawing {
         [
           ResolvedNode(
             id: NodeID(rawValue: 2),
-            content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+            content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
           ),
           ResolvedNode(
             id: NodeID(rawValue: 3),
-            content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+            content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
           ),
         ]
       )
@@ -92,7 +92,7 @@ private struct TrackingDrawing: CustomDrawing {
     )
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.shape(AnyShape(Rectangle()))),
+      content: .primitive(.init(Rectangle())),
       values: values
     )
 
@@ -111,7 +111,7 @@ private struct TrackingDrawing: CustomDrawing {
       return
     }
 
-    #expect(commitment.primitive.isEquivalent(to: .shape(AnyShape(Rectangle()))))
+    #expect(commitment.primitive.isEquivalent(to: .init(Rectangle())))
     #expect((commitment.value as? Path)?.boundingRect == CGRect(x: 0, y: 0, width: 80, height: 10))
     #expect(leaf.frame.width == 80)
     #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
@@ -121,7 +121,7 @@ private struct TrackingDrawing: CustomDrawing {
     let runtime = RenderRuntime()
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.drawing(fixedDrawing(width: 80, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 80, height: 20)))
     )
 
     let renderRoot = runtime.layout(
@@ -139,7 +139,7 @@ private struct TrackingDrawing: CustomDrawing {
       return
     }
 
-    #expect(commitment.primitive.isEquivalent(to: .drawing(fixedDrawing(width: 80, height: 20))))
+    #expect(commitment.primitive.isEquivalent(to: Primitive(fixedDrawing(width: 80, height: 20))))
     #expect(commitment.value as? CGRect == CGRect(x: 0, y: 0, width: 80, height: 20))
     #expect(leaf.frame.size == CGSize(width: 80, height: 20))
   }
@@ -150,7 +150,7 @@ private struct TrackingDrawing: CustomDrawing {
         content
       }
     }
-    let node = Node.primitive(.drawing(fixedDrawing(width: 60, height: 20)))
+    let node = Node.primitive(.init(fixedDrawing(width: 60, height: 20)))
       .viewModifier(TestModifier())
 
     #expect(node.values[ViewModifierKey.self] != nil)
@@ -187,13 +187,13 @@ private struct TrackingDrawing: CustomDrawing {
 
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.drawing(TrackingDrawing(token: 1, recorder: recorder)))
+      content: .primitive(.init(TrackingDrawing(token: 1, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: initialRoot, proposal: ProposedSize(width: 100, height: nil))
 
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.drawing(TrackingDrawing(token: 2, recorder: recorder)))
+      content: .primitive(.init(TrackingDrawing(token: 2, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: updatedRoot, proposal: ProposedSize(width: 100, height: nil))
 
@@ -205,11 +205,11 @@ private struct TrackingDrawing: CustomDrawing {
     let runtime = RenderRuntime()
     let nestedLeafD = ResolvedNode(
       id: NodeID(rawValue: 5),
-      content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let nestedLeafE = ResolvedNode(
       id: NodeID(rawValue: 6),
-      content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let nestedStack = ResolvedNode(
       id: NodeID(rawValue: 4),
@@ -220,7 +220,7 @@ private struct TrackingDrawing: CustomDrawing {
     )
     let leafB = ResolvedNode(
       id: NodeID(rawValue: 3),
-      content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
@@ -240,7 +240,7 @@ private struct TrackingDrawing: CustomDrawing {
 
     let insertedHead = ResolvedNode(
       id: NodeID(rawValue: 2),
-      content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+      content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
     )
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),

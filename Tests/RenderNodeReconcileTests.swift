@@ -30,7 +30,7 @@ private struct EmptyComponent: Component, Equatable {
 private func makeResolvedTree() -> ResolvedNode {
   let leaf = ResolvedNode(
     id: NodeID(rawValue: 3),
-    content: .primitive(.drawing(fixedDrawing(width: 100, height: 20)))
+    content: .primitive(.init(fixedDrawing(width: 100, height: 20)))
   )
   let layout = ResolvedNode(
     id: NodeID(rawValue: 2),

@@ -318,7 +318,7 @@ struct MessageComponent: Component {
       children.append(
         IdentifiedNode(
           id: "cursor",
-          node: .shape(AnyShape(Rectangle())).frame(height: 3)
+          node: .shape(Rectangle()).frame(height: 3)
         )
       )
     }
@@ -350,7 +350,7 @@ struct MessageComponent: Component {
       children.append(
         IdentifiedNode(
           id: "divider",
-          node: .shape(AnyShape(Rectangle())).frame(height: 1)
+          node: .shape(Rectangle()).frame(height: 1)
         )
       )
     }
@@ -417,7 +417,7 @@ struct ToolCallComponent: Component {
 
     // Wrap in container with left accent bar
     return Node.zstack {
-      Node.shape(AnyShape(Rectangle())).frame(width: 2).keyed("bar")
+      Node.shape(Rectangle()).frame(width: 2).keyed("bar")
 
       Node.layout(
         AnyLayout(VStackLayout(spacing: 4)),
@@ -512,7 +512,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
   case _ as ThematicBreak:
     return IdentifiedNode(
       id: key,
-      node: .shape(AnyShape(Rectangle())).frame(height: 1)
+      node: .shape(Rectangle()).frame(height: 1)
     )
 
   case let blockQuote as BlockQuote:
@@ -527,7 +527,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
       children: [
         IdentifiedNode(
           id: "bar",
-          node: .shape(AnyShape(Rectangle())).frame(width: 3)
+          node: .shape(Rectangle()).frame(width: 3)
         ),
         IdentifiedNode(
           id: "content",

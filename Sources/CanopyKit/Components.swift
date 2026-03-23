@@ -85,27 +85,15 @@ public extension Node {
     Self.primitive(.init(drawing), values: values)
   }
 
-  static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
-    primitive(.shape(shape), values: values)
-  }
-
-  static func shape(_ shape: some ShapePrimitive, values: NodeValues = NodeValues()) -> Self {
-    Self.shape(AnyShape(shape), values: values)
-  }
-
   static func shape(_ shape: some Shape, values: NodeValues = NodeValues()) -> Self {
-    Self.shape(AnyShape(shape), values: values)
-  }
-
-  static func view(_ representable: AnyViewRepresentable, values: NodeValues = NodeValues()) -> Self {
-    primitive(.view(representable), values: values)
+    Self.primitive(.init(shape), values: values)
   }
 
   static func view(
     _ representable: some CustomViewRepresentable,
     values: NodeValues = NodeValues()
   ) -> Self {
-    view(AnyViewRepresentable(representable), values: values)
+    primitive(.init(representable), values: values)
   }
 
   // MARK: Leaf Factories
@@ -178,34 +166,10 @@ public extension IdentifiedNode {
 
   static func shape(
     key: some Hashable,
-    _ shape: AnyShape,
-    values: NodeValues = NodeValues()
-  ) -> Self {
-    Self(id: key, node: .shape(shape, values: values))
-  }
-
-  static func shape(
-    key: some Hashable,
-    _ shape: some ShapePrimitive,
-    values: NodeValues = NodeValues()
-  ) -> Self {
-    Self(id: key, node: .shape(AnyShape(shape), values: values))
-  }
-
-  static func shape(
-    key: some Hashable,
     _ shape: some Shape,
     values: NodeValues = NodeValues()
   ) -> Self {
-    Self(id: key, node: .shape(AnyShape(shape), values: values))
-  }
-
-  static func view(
-    key: some Hashable,
-    _ representable: AnyViewRepresentable,
-    values: NodeValues = NodeValues()
-  ) -> Self {
-    Self(id: key, node: .view(representable, values: values))
+    Self.primitive(key: key, .init(shape), values: values)
   }
 
   static func view(
@@ -213,7 +177,7 @@ public extension IdentifiedNode {
     _ representable: some CustomViewRepresentable,
     values: NodeValues = NodeValues()
   ) -> Self {
-    Self(id: key, node: .view(AnyViewRepresentable(representable), values: values))
+    Self.primitive(key: key, .init(representable), values: values)
   }
 }
 
@@ -327,7 +291,7 @@ public final class ComponentRenderer {
       ),
     ]
     dirtyIDs = [.root]
-    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.drawing(PlaceholderDrawing())))
+    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.init(PlaceholderDrawing())))
     refresh()
   }
 
@@ -850,18 +814,13 @@ private func reusePrimitiveNode(
 /// Zero-size drawing used as a throwaway seed for `ComponentRenderer`
 /// before the first `refresh()` replaces it.
 private struct PlaceholderDrawing: CustomDrawing {
-  struct Cache {}
   typealias Commitment = CGRect
 
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal _: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal _: ProposedSize, cache _: inout Void) -> CGSize {
     .zero
   }
 
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
     bounds
   }
 

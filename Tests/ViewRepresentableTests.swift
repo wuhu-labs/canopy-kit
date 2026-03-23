@@ -11,20 +11,15 @@ private struct FixedSizeViewRepresentable: CustomViewRepresentable {
   var height: CGFloat
   var label: String
 
-  struct Cache {}
   typealias Commitment = CGRect
 
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Void) -> CGSize {
     let w = proposal.width.map { min(width, $0) } ?? width
     let h = proposal.height.map { min(height, $0) } ?? height
     return CGSize(width: w, height: h)
   }
 
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
     bounds
   }
 
@@ -76,12 +71,10 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
 @Suite struct ViewRepresentableTests {
   @Test func customViewPrimitiveProducesViewCommitment() throws {
     let runtime = RenderRuntime()
-    let representable = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 120, height: 30, label: "Hello")
-    )
+    let representable = FixedSizeViewRepresentable(width: 120, height: 30, label: "Hello")
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.view(representable))
+      content: .primitive(.init(representable))
     )
 
     let renderRoot = runtime.layout(
@@ -99,7 +92,7 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
       return
     }
 
-    #expect(commitment.primitive.isEquivalent(to: .view(representable)))
+    #expect(commitment.primitive.isEquivalent(to: .init(representable)))
     #expect(commitment.value as? CGRect == CGRect(x: 0, y: 0, width: 120, height: 30))
     #expect(leaf.frame.size.width == 120)
     #expect(leaf.frame.size.height == 30)
@@ -107,12 +100,10 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
 
   @Test func customViewSizeRespectsProposal() {
     let runtime = RenderRuntime()
-    let representable = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 120, height: 30, label: "Hello")
-    )
+    let representable = FixedSizeViewRepresentable(width: 120, height: 30, label: "Hello")
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.view(representable))
+      content: .primitive(.init(representable))
     )
 
     let size = runtime.sizeThatFits(
@@ -130,17 +121,13 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
 
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.view(
-        AnyViewRepresentable(TrackingViewRepresentable(token: 1, recorder: recorder))
-      ))
+      content: .primitive(.init(TrackingViewRepresentable(token: 1, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: initialRoot, proposal: ProposedSize(width: 100, height: nil))
 
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.view(
-        AnyViewRepresentable(TrackingViewRepresentable(token: 2, recorder: recorder))
-      ))
+      content: .primitive(.init(TrackingViewRepresentable(token: 2, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: updatedRoot, proposal: ProposedSize(width: 100, height: nil))
 
@@ -150,12 +137,8 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
 
   @Test func customViewInLayoutReceivesCorrectFrames() throws {
     let runtime = RenderRuntime()
-    let view1 = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
-    )
-    let view2 = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 30, label: "B")
-    )
+    let view1 = FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
+    let view2 = FixedSizeViewRepresentable(width: 100, height: 30, label: "B")
     let root = ResolvedNode(
       id: NodeID(rawValue: 1),
       content: .layout(
@@ -163,11 +146,11 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
         [
           ResolvedNode(
             id: NodeID(rawValue: 2),
-            content: .primitive(.view(view1))
+            content: .primitive(.init(view1))
           ),
           ResolvedNode(
             id: NodeID(rawValue: 3),
-            content: .primitive(.view(view2))
+            content: .primitive(.init(view2))
           ),
         ]
       )
@@ -185,57 +168,43 @@ private struct TrackingViewRepresentable: CustomViewRepresentable {
   }
 
   @Test func customViewEquivalenceDetectsSameType() {
-    let a = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
-    )
-    let b = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
-    )
-    let c = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 20, label: "B")
-    )
+    let a = Primitive(FixedSizeViewRepresentable(width: 100, height: 20, label: "A"))
+    let b = Primitive(FixedSizeViewRepresentable(width: 100, height: 20, label: "A"))
+    let c = Primitive(FixedSizeViewRepresentable(width: 100, height: 20, label: "B"))
 
     #expect(a.isEquivalent(to: b))
     #expect(!a.isEquivalent(to: c))
   }
 
   @Test func primitiveIsEquivalentForCustomView() {
-    let a = Primitive.view(AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
-    ))
-    let b = Primitive.view(AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 100, height: 20, label: "A")
-    ))
-    let c = Primitive.drawing(fixedDrawing(width: 100, height: 20))
+    let a = Primitive(FixedSizeViewRepresentable(width: 100, height: 20, label: "A"))
+    let b = Primitive(FixedSizeViewRepresentable(width: 100, height: 20, label: "A"))
+    let c = Primitive(fixedDrawing(width: 100, height: 20))
 
     #expect(a.isEquivalent(to: b))
     #expect(!a.isEquivalent(to: c))
   }
 
   @Test func nodeConvenienceFactoryCreatesCustomViewPrimitive() {
-    let representable = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 50, height: 50, label: "Test")
-    )
+    let representable = FixedSizeViewRepresentable(width: 50, height: 50, label: "Test")
     let node = Node.view(representable)
 
     guard case let .primitive(primitive) = node.content else {
       Issue.record("Expected primitive content")
       return
     }
-    #expect(primitive.isEquivalent(to: .view(representable)))
+    #expect(primitive.isEquivalent(to: .init(representable)))
   }
 
   @Test func identifiedNodeConvenienceFactoryCreatesCustomViewPrimitive() {
-    let representable = AnyViewRepresentable(
-      FixedSizeViewRepresentable(width: 50, height: 50, label: "Test")
-    )
+    let representable = FixedSizeViewRepresentable(width: 50, height: 50, label: "Test")
     let identified = IdentifiedNode.view(key: "test", representable)
 
     guard case let .primitive(primitive) = identified.node.content else {
       Issue.record("Expected primitive content")
       return
     }
-    #expect(primitive.isEquivalent(to: .view(representable)))
+    #expect(primitive.isEquivalent(to: .init(representable)))
     #expect(identified.id == AnyHashable("test"))
   }
 }

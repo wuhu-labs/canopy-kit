@@ -12,20 +12,15 @@ struct ImageViewRepresentable: CustomViewRepresentable, Equatable {
   var height: CGFloat
   var color: Color
 
-  struct Cache {}
   typealias Commitment = CGRect
 
-  func makeCache() -> Cache {
-    Cache()
-  }
-
-  func sizeThatFits(proposal: ProposedSize, cache _: inout Cache) -> CGSize {
+  func sizeThatFits(proposal: ProposedSize, cache _: inout Void) -> CGSize {
     let w = proposal.width.map { min(width, $0) } ?? width
     let h = proposal.height.map { min(height, $0) } ?? height
     return CGSize(width: w, height: h)
   }
 
-  func makeCommitment(in bounds: CGRect, cache _: Cache) -> CGRect {
+  func makeCommitment(in bounds: CGRect, cache _: Void) -> CGRect {
     bounds
   }
 
@@ -90,13 +85,11 @@ struct ImageCardComponent: Component, Equatable {
   func body() -> Node {
     .hstack(spacing: 12) {
       Node.view(
-        AnyViewRepresentable(
-          ImageViewRepresentable(
-            systemName: item.systemName,
-            width: 32,
-            height: 32,
-            color: item.color
-          )
+        ImageViewRepresentable(
+          systemName: item.systemName,
+          width: 32,
+          height: 32,
+          color: item.color
         )
       )
       .frame(width: 32, height: 32)

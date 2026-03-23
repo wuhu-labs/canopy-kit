@@ -97,7 +97,7 @@ struct TapGestureDemoComponent: Component {
             children: [
               IdentifiedNode(
                 id: "bg",
-                node: .shape(AnyShape(Capsule())).frame(height: Self.cardHeight)
+                node: .shape(Capsule()).frame(height: Self.cardHeight)
               ),
               .drawing(
                 key: "label",

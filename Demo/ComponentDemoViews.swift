@@ -111,7 +111,7 @@ struct ParagraphCardComponent: Component, Equatable {
           children: [
             .shape(
               key: "shape",
-              CanopyKit.AnyShape(Rectangle())
+              Rectangle()
             )
             .value(PrimitiveFillColorKey.self, CGColor(gray: 0.88, alpha: 1)),
           ]

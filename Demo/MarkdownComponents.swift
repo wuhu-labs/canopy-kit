@@ -59,7 +59,7 @@ struct CodeBlockComponent: Component, Equatable {
 
 struct ThematicBreakComponent: Component, Equatable {
   func body() -> Node {
-    Node.shape(AnyShape(Rectangle()))
+    Node.shape(Rectangle())
       .frame(height: 1)
   }
 }
@@ -69,7 +69,7 @@ struct BlockQuoteComponent: Component, Equatable {
 
   func body() -> Node {
     .zstack {
-      Node.shape(AnyShape(Rectangle())).frame(width: 3).keyed("bar")
+      Node.shape(Rectangle()).frame(width: 3).keyed("bar")
 
       Node.vstack(spacing: 8) {
         for (index, block) in childBlocks.enumerated() {
