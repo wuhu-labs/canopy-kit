@@ -112,8 +112,7 @@ struct ParagraphCardComponent: Component, Equatable {
             .shape(
               key: "shape",
               Rectangle()
-            )
-            .value(PrimitiveFillColorKey.self, CGColor(gray: 0.88, alpha: 1)),
+            ),
           ]
         ),
       ]

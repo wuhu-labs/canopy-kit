@@ -1,19 +1,6 @@
 import CoreGraphics
 import SwiftUI
 
-public enum StretchBehavior: Sendable {
-  case intrinsic
-  case fill
-}
-
-public struct StretchBehaviorKey: NodeValueKey {
-  public static let defaultValue: StretchBehavior = .intrinsic
-}
-
-public struct FlexGrowKey: NodeValueKey {
-  public static let defaultValue: CGFloat = 0
-}
-
 // MARK: - Node Modifier API
 
 public extension Node {

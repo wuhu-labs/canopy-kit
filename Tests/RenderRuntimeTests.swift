@@ -83,17 +83,9 @@ private struct TrackingDrawing: CustomDrawing {
 
   @Test func shapePrimitiveProducesViewCommitment() throws {
     let runtime = RenderRuntime()
-
-    var values = NodeValues()
-    values[PrimitiveFillColorKey.self] = CGColor(gray: 0.2, alpha: 1)
-    values[PrimitiveStrokeStyleKey.self] = PrimitiveStrokeStyle(
-      color: CGColor(gray: 0.8, alpha: 1),
-      lineWidth: 2
-    )
     let root = ResolvedNode(
       id: .root,
-      content: .primitive(.init(Rectangle())),
-      values: values
+      content: .primitive(.init(Rectangle()))
     )
 
     let renderRoot = runtime.layout(
@@ -114,7 +106,6 @@ private struct TrackingDrawing: CustomDrawing {
     #expect(commitment.primitive.isEquivalent(to: .init(Rectangle())))
     #expect((commitment.value as? Path)?.boundingRect == CGRect(x: 0, y: 0, width: 80, height: 10))
     #expect(leaf.frame.width == 80)
-    #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
   }
 
   @Test func customDrawingPrimitiveProducesViewCommitment() throws {
