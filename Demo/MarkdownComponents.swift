@@ -92,7 +92,7 @@ struct UnorderedListComponent: Component, Equatable {
       for (index, item) in items.enumerated() {
         IdentifiedNode.component(
           key: "item-\(index)",
-          AnyComponent(ListItemComponent(marker: "\u{2022}", item: item))
+          ListItemComponent(marker: "\u{2022}", item: item)
         )
       }
     }
@@ -108,10 +108,10 @@ struct OrderedListComponent: Component, Equatable {
       for (index, item) in items.enumerated() {
         IdentifiedNode.component(
           key: "item-\(index)",
-          AnyComponent(ListItemComponent(
+          ListItemComponent(
             marker: "\(startIndex + UInt(index)).",
             item: item
-          ))
+          )
         )
       }
     }
@@ -209,28 +209,28 @@ private func extractBlockData(_ markup: Markup) -> BlockData? {
 private func blockComponentFromData(_ block: BlockData, key: String) -> IdentifiedNode? {
   switch block {
   case let .heading(text, level):
-    .component(key: key, AnyComponent(HeadingBlockComponent(text: text, level: level)))
+    .component(key: key, HeadingBlockComponent(text: text, level: level))
 
   case let .paragraph(text):
-    .component(key: key, AnyComponent(ParagraphBlockComponent(text: text)))
+    .component(key: key, ParagraphBlockComponent(text: text))
 
   case let .codeBlock(code):
-    .component(key: key, AnyComponent(CodeBlockComponent(code: code)))
+    .component(key: key, CodeBlockComponent(code: code))
 
   case .thematicBreak:
-    .component(key: key, AnyComponent(ThematicBreakComponent()))
+    .component(key: key, ThematicBreakComponent())
 
   case let .blockQuote(children):
-    .component(key: key, AnyComponent(BlockQuoteComponent(childBlocks: children)))
+    .component(key: key, BlockQuoteComponent(childBlocks: children))
 
   case let .unorderedList(items):
-    .component(key: key, AnyComponent(UnorderedListComponent(items: items)))
+    .component(key: key, UnorderedListComponent(items: items))
 
   case let .orderedList(startIndex, items):
-    .component(key: key, AnyComponent(OrderedListComponent(startIndex: startIndex, items: items)))
+    .component(key: key, OrderedListComponent(startIndex: startIndex, items: items))
 
   case let .fallbackText(text):
-    .component(key: key, AnyComponent(FallbackTextComponent(text: text)))
+    .component(key: key, FallbackTextComponent(text: text))
   }
 }
 

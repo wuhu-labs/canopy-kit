@@ -3,13 +3,13 @@ import IdentifiedCollections
 import os.log
 import SwiftUI
 
-public struct PrimitiveCommitment: @unchecked Sendable {
+struct PrimitiveCommitment: @unchecked Sendable {
   let primitive: Primitive
   let value: Any
 }
 
 public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
-  public enum Content: @unchecked Sendable {
+  enum Content: @unchecked Sendable {
     case component(AnyComponent, ResolvedRenderNode)
     case layout(AnyLayout, IdentifiedArrayOf<ResolvedRenderNode>)
     case primitive(Primitive, PrimitiveCommitment?)
@@ -23,9 +23,9 @@ public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
   /// viewport, even when children overflow their parent's frame.
   public let boundingRect: CGRect
   public let values: NodeValues
-  public let content: Content
+  let content: Content
 
-  public init(
+  init(
     id: NodeID,
     frame: CGRect,
     boundingRect: CGRect,

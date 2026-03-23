@@ -69,11 +69,7 @@ struct SessionDemoView: View {
 
       Divider()
 
-      ComponentTreeView(
-        root: AnyComponent(
-          SessionRootComponent(model: model)
-        )
-      )
+      ComponentTreeView(root: SessionRootComponent(model: model))
       .autoScrollWhenHeightChanges(model.streamingMessageID != nil)
     }
     .frame(maxWidth: 800)

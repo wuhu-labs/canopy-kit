@@ -35,16 +35,16 @@ public protocol Component {
 }
 
 public struct Node: @unchecked Sendable {
-  public var content: NodeContent
+  var content: NodeContent
   public var values: NodeValues
 
-  public init(content: NodeContent, values: NodeValues = NodeValues()) {
+  init(content: NodeContent, values: NodeValues = NodeValues()) {
     self.content = content
     self.values = values
   }
 }
 
-public enum NodeContent: @unchecked Sendable {
+enum NodeContent: @unchecked Sendable {
   case component(AnyComponent)
   case layout(AnyLayout, IdentifiedArrayOf<IdentifiedNode>)
   case primitive(Primitive)
@@ -65,16 +65,36 @@ public struct IdentifiedNode: Identifiable, @unchecked Sendable {
 }
 
 public extension Node {
-  static func component(_ component: AnyComponent, values: NodeValues = NodeValues()) -> Self {
+  static func component(_ component: some Component, values: NodeValues = NodeValues()) -> Self {
+    Self.component(AnyComponent(component), values: values)
+  }
+
+  internal static func component(_ component: AnyComponent, values: NodeValues = NodeValues()) -> Self {
     Self(content: .component(component), values: values)
   }
 
   static func layout(
+    _ layout: some Layout,
+    children: IdentifiedArrayOf<IdentifiedNode>,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.layout(AnyLayout(layout), children: children, values: values)
+  }
+
+  internal static func layout(
     _ layout: AnyLayout,
     children: IdentifiedArrayOf<IdentifiedNode>,
     values: NodeValues = NodeValues()
   ) -> Self {
     Self(content: .layout(layout, children), values: values)
+  }
+
+  static func layout(
+    _ layout: some Layout,
+    values: NodeValues = NodeValues(),
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Self {
+    Self.layout(layout, children: children(), values: values)
   }
 
   static func primitive(_ primitive: Primitive, values: NodeValues = NodeValues()) -> Self {
@@ -111,15 +131,15 @@ public extension Node {
   // MARK: Layout Convenience (NodeBuilder)
 
   static func vstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
-    layout(AnyLayout(VStackLayout(spacing: spacing)), children: children())
+    layout(VStackLayout(spacing: spacing), children: children())
   }
 
   static func hstack(spacing: CGFloat = 0, @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
-    layout(AnyLayout(HStackLayout(spacing: spacing)), children: children())
+    layout(HStackLayout(spacing: spacing), children: children())
   }
 
   static func zstack(@NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>) -> Self {
-    layout(AnyLayout(ZStackLayout()), children: children())
+    layout(ZStackLayout(), children: children())
   }
 
   // MARK: Keying
@@ -133,6 +153,14 @@ public extension Node {
 public extension IdentifiedNode {
   static func component(
     key: some Hashable,
+    _ component: some Component,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.component(key: key, AnyComponent(component), values: values)
+  }
+
+  internal static func component(
+    key: some Hashable,
     _ component: AnyComponent,
     values: NodeValues = NodeValues()
   ) -> Self {
@@ -141,11 +169,29 @@ public extension IdentifiedNode {
 
   static func layout(
     key: some Hashable,
+    _ layout: some Layout,
+    children: IdentifiedArrayOf<IdentifiedNode>,
+    values: NodeValues = NodeValues()
+  ) -> Self {
+    Self.layout(key: key, AnyLayout(layout), children: children, values: values)
+  }
+
+  internal static func layout(
+    key: some Hashable,
     _ layout: AnyLayout,
     children: IdentifiedArrayOf<IdentifiedNode>,
     values: NodeValues = NodeValues()
   ) -> Self {
     Self(id: key, node: .layout(layout, children: children, values: values))
+  }
+
+  static func layout(
+    key: some Hashable,
+    _ layout: some Layout,
+    values: NodeValues = NodeValues(),
+    @NodeBuilder _ children: () -> IdentifiedArrayOf<IdentifiedNode>
+  ) -> Self {
+    Self.layout(key: key, layout, children: children(), values: values)
   }
 
   static func primitive(
@@ -181,15 +227,15 @@ public extension IdentifiedNode {
   }
 }
 
-public struct AnyComponent: @unchecked Sendable {
+struct AnyComponent: @unchecked Sendable {
   private let value: any Component
 
-  public init(_ component: some Component) {
+  init(_ component: some Component) {
     value = component
   }
 
   @MainActor
-  public func body() -> Node {
+  func body() -> Node {
     value.body()
   }
 
@@ -204,17 +250,17 @@ private func compareComponent<C: Component>(lhs: C, rhs: any Component) -> Bool 
 }
 
 public final class ResolvedNode: Identifiable, @unchecked Sendable {
-  public enum Content: @unchecked Sendable {
+  enum Content: @unchecked Sendable {
     case component(AnyComponent, ResolvedNode)
     case layout(AnyLayout, IdentifiedArrayOf<ResolvedNode>)
     case primitive(Primitive)
   }
 
   public let id: NodeID
-  public let content: Content
+  let content: Content
   public let values: NodeValues
 
-  public init(id: NodeID, content: Content, values: NodeValues = NodeValues()) {
+  init(id: NodeID, content: Content, values: NodeValues = NodeValues()) {
     self.id = id
     self.content = content
     self.values = values
@@ -280,7 +326,11 @@ public final class ComponentRenderer {
   public private(set) var resolvedRoot: ResolvedNode
   public private(set) var revision = 0
 
-  public init(root: AnyComponent) {
+  public convenience init(root: some Component) {
+    self.init(root: AnyComponent(root))
+  }
+
+  init(root: AnyComponent) {
     registry = [
       .root: RuntimeEntry(
         id: .root,
@@ -295,7 +345,11 @@ public final class ComponentRenderer {
     refresh()
   }
 
-  public func updateRoot(_ root: AnyComponent) {
+  public func updateRoot(_ root: some Component) {
+    updateRoot(AnyComponent(root))
+  }
+
+  func updateRoot(_ root: AnyComponent) {
     guard var entry = registry[.root] else { return }
     guard !entry.component.isEquivalent(to: root) else { return }
     entry.component = root
@@ -672,7 +726,8 @@ public struct ComponentTreeView: View {
   @State private var renderer: ComponentRenderer
   private let root: AnyComponent
 
-  public init(root: AnyComponent) {
+  public init(root: some Component) {
+    let root = AnyComponent(root)
     self.root = root
     _renderer = State(initialValue: ComponentRenderer(root: root))
   }

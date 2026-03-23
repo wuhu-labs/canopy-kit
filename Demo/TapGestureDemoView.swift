@@ -66,11 +66,7 @@ struct TapGestureDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(
-          TapGestureDemoComponent(model: model)
-        )
-      )
+      ComponentTreeView(root: TapGestureDemoComponent(model: model))
     }
   }
 }
@@ -88,12 +84,12 @@ struct TapGestureDemoComponent: Component {
 
   func body() -> Node {
     .layout(
-      AnyLayout(VStackLayout(spacing: 12)),
+      VStackLayout(spacing: 12),
       children: IdentifiedArray(
         uniqueElements: model.counters.map { counter in
           IdentifiedNode.layout(
             key: counter.id,
-            AnyLayout(VStackLayout(spacing: 4)),
+            VStackLayout(spacing: 4),
             children: [
               IdentifiedNode(
                 id: "bg",

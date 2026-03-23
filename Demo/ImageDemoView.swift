@@ -66,12 +66,12 @@ struct ImageGalleryComponent: Component {
 
   func body() -> Node {
     .layout(
-      AnyLayout(VStackLayout(spacing: 12)),
+      VStackLayout(spacing: 12),
       children: IdentifiedArray(
         uniqueElements: model.items.map { item in
           IdentifiedNode.component(
             key: item.id,
-            AnyComponent(ImageCardComponent(item: item))
+            ImageCardComponent(item: item)
           )
         }
       )
@@ -117,9 +117,7 @@ struct ImageDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(ImageGalleryComponent(model: model))
-      )
+      ComponentTreeView(root: ImageGalleryComponent(model: model))
     }
   }
 }

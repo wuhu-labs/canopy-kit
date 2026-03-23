@@ -7,9 +7,7 @@ import SwiftUI
 
 struct StaticMarkdownDemoView: View {
   var body: some View {
-    ComponentTreeView(
-      root: AnyComponent(MarkdownDocumentComponent(source: staticMarkdownDocument))
-    )
+    ComponentTreeView(root: MarkdownDocumentComponent(source: staticMarkdownDocument))
   }
 }
 
@@ -54,11 +52,7 @@ struct ReactiveFeedDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(
-          ReactiveFeedComponent(model: model)
-        )
-      )
+      ComponentTreeView(root: ReactiveFeedComponent(model: model))
       .autoScrollWhenHeightChanges()
     }
   }
@@ -77,12 +71,12 @@ struct ReactiveFeedComponent: Component {
 
   func body() -> Node {
     .layout(
-      AnyLayout(VStackLayout(spacing: 8)),
+      VStackLayout(spacing: 8),
       children: IdentifiedArray(
         uniqueElements: model.paragraphs.map { paragraph in
           IdentifiedNode.component(
             key: paragraph.id,
-            AnyComponent(ParagraphCardComponent(paragraph: paragraph))
+            ParagraphCardComponent(paragraph: paragraph)
           )
         }
       )
@@ -95,7 +89,7 @@ struct ParagraphCardComponent: Component, Equatable {
 
   func body() -> Node {
     .layout(
-      AnyLayout(VStackLayout(spacing: 6)),
+      VStackLayout(spacing: 6),
       children: [
         .drawing(
           key: "label",
@@ -107,7 +101,7 @@ struct ParagraphCardComponent: Component, Equatable {
         ),
         .layout(
           key: "rule",
-          AnyLayout(FrameLayout(height: 1)),
+          FrameLayout(height: 1),
           children: [
             .shape(
               key: "shape",
@@ -255,14 +249,12 @@ struct MultiDocumentComponent: Component {
 
   func body() -> Node {
     .layout(
-      AnyLayout(VStackLayout(spacing: 16)),
+      VStackLayout(spacing: 16),
       children: IdentifiedArray(
         uniqueElements: appModel.documents.map { doc in
           IdentifiedNode.component(
             key: doc.id,
-            AnyComponent(
-              SingleDocumentComponent(document: doc)
-            )
+            SingleDocumentComponent(document: doc)
           )
         }
       )
@@ -300,11 +292,7 @@ struct MarkdownStreamDemoView: View {
       .padding(.horizontal, 16)
       .padding(.top, 12)
 
-      ComponentTreeView(
-        root: AnyComponent(
-          MultiDocumentComponent(appModel: appModel)
-        )
-      )
+      ComponentTreeView(root: MultiDocumentComponent(appModel: appModel))
       .autoScrollWhenHeightChanges()
     }
     .onReceive(timer) { _ in

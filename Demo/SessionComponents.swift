@@ -175,10 +175,10 @@ struct SessionRootComponent: Component {
       children.append(
         .component(
           key: message.id,
-          AnyComponent(MessageComponent(
+          MessageComponent(
             model: message,
             isStreaming: isStreaming
-          ))
+          )
         )
       )
     }
@@ -188,13 +188,13 @@ struct SessionRootComponent: Component {
       children.append(
         .component(
           key: "__thinking",
-          AnyComponent(ThinkingIndicatorComponent())
+          ThinkingIndicatorComponent()
         )
       )
     }
 
     return .layout(
-      AnyLayout(VStackLayout(spacing: 0)),
+      VStackLayout(spacing: 0),
       children: IdentifiedArray(uniqueElements: children)
     )
   }
@@ -260,15 +260,15 @@ struct MessageComponent: Component {
       children.append(
         .component(
           key: "img-\(image.id)",
-          AnyComponent(ImagePlaceholderComponent(
+          ImagePlaceholderComponent(
             label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
-          ))
+          )
         )
       )
     }
 
     return Node.layout(
-      AnyLayout(VStackLayout(spacing: 6)),
+      VStackLayout(spacing: 6),
       children: IdentifiedArray(uniqueElements: children)
     )
     .padding(left: 16, top: 12, right: 16, bottom: 12)
@@ -308,7 +308,7 @@ struct MessageComponent: Component {
       children.append(
         .component(
           key: "markdown",
-          AnyComponent(RichMarkdownComponent(source: model.content))
+          RichMarkdownComponent(source: model.content)
         )
       )
     }
@@ -328,9 +328,9 @@ struct MessageComponent: Component {
       children.append(
         .component(
           key: "img-\(image.id)",
-          AnyComponent(ImagePlaceholderComponent(
+          ImagePlaceholderComponent(
             label: "📎 Image: \(image.blobURI.split(separator: "/").last ?? "image")"
-          ))
+          )
         )
       )
     }
@@ -340,7 +340,7 @@ struct MessageComponent: Component {
       children.append(
         .component(
           key: "tc-\(tc.id)",
-          AnyComponent(ToolCallComponent(model: tc))
+          ToolCallComponent(model: tc)
         )
       )
     }
@@ -356,7 +356,7 @@ struct MessageComponent: Component {
     }
 
     return Node.layout(
-      AnyLayout(VStackLayout(spacing: 6)),
+      VStackLayout(spacing: 6),
       children: IdentifiedArray(uniqueElements: children)
     )
     .padding(left: 16, top: 12, right: 16, bottom: 4)
@@ -420,7 +420,7 @@ struct ToolCallComponent: Component {
       Node.shape(Rectangle()).frame(width: 2).keyed("bar")
 
       Node.layout(
-        AnyLayout(VStackLayout(spacing: 4)),
+        VStackLayout(spacing: 4),
         children: IdentifiedArray(uniqueElements: children)
       )
       .padding(left: 10, top: 4, bottom: 4)
@@ -503,10 +503,10 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
   case let codeBlock as CodeBlock:
     return .component(
       key: key,
-      AnyComponent(RichCodeBlockComponent(
+      RichCodeBlockComponent(
         code: codeBlock.code,
         language: codeBlock.language
-      ))
+      )
     )
 
   case _ as ThematicBreak:
@@ -523,7 +523,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
 
     return .layout(
       key: key,
-      AnyLayout(ZStackLayout()),
+      ZStackLayout(),
       children: [
         IdentifiedNode(
           id: "bar",
@@ -532,7 +532,7 @@ private func richBlockNode(_ markup: Markup, key: String) -> IdentifiedNode? {
         IdentifiedNode(
           id: "content",
           node: Node.layout(
-            AnyLayout(VStackLayout(spacing: 6)),
+            VStackLayout(spacing: 6),
             children: IdentifiedArray(uniqueElements: childNodes)
           )
           .padding(left: 13)
@@ -599,7 +599,7 @@ private func richTableNode(_ table: Markdown.Table, key: String) -> IdentifiedNo
 
   return .component(
     key: key,
-    AnyComponent(RichCodeBlockComponent(code: text, language: nil))
+    RichCodeBlockComponent(code: text, language: nil)
   )
 }
 
@@ -641,7 +641,7 @@ struct RichCodeBlockComponent: Component, Equatable {
     )
 
     return Node.layout(
-      AnyLayout(VStackLayout(spacing: 4)),
+      VStackLayout(spacing: 4),
       children: IdentifiedArray(uniqueElements: children)
     )
     .padding(left: 12, top: 8, right: 12, bottom: 8)
