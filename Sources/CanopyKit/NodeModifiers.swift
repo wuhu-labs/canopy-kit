@@ -65,6 +65,25 @@ public extension Node {
   func onTapGesture(_ action: @escaping () -> Void) -> Self {
     gesture(NodeGesture(onTap: action))
   }
+
+  /// Attach an arbitrary SwiftUI `ViewModifier` to this node.
+  ///
+  /// The modifier is applied at SwiftUI materialization time and does **not**
+  /// participate in CanopyKit's layout engine. The caller is responsible for
+  /// only attaching layout-independent modifiers.
+  ///
+  /// Multiple calls concatenate: the modifiers are applied left-to-right in
+  /// the order they were attached.
+  func viewModifier<M: ViewModifier>(_ modifier: M) -> Self {
+    var node = self
+    let wrapped = AnyViewModifier(modifier)
+    if let existing = node.values[ViewModifierKey.self] {
+      node.values[ViewModifierKey.self] = existing.concat(wrapped)
+    } else {
+      node.values[ViewModifierKey.self] = wrapped
+    }
+    return node
+  }
 }
 
 public extension IdentifiedNode {
@@ -88,5 +107,24 @@ public extension IdentifiedNode {
 
   func onTapGesture(_ action: @escaping () -> Void) -> Self {
     gesture(NodeGesture(onTap: action))
+  }
+
+  /// Attach an arbitrary SwiftUI `ViewModifier` to this node.
+  ///
+  /// The modifier is applied at SwiftUI materialization time and does **not**
+  /// participate in CanopyKit's layout engine. The caller is responsible for
+  /// only attaching layout-independent modifiers.
+  ///
+  /// Multiple calls concatenate: the modifiers are applied left-to-right in
+  /// the order they were attached.
+  func viewModifier<M: ViewModifier>(_ modifier: M) -> Self {
+    var node = self
+    let wrapped = AnyViewModifier(modifier)
+    if let existing = node.node.values[ViewModifierKey.self] {
+      node.node.values[ViewModifierKey.self] = existing.concat(wrapped)
+    } else {
+      node.node.values[ViewModifierKey.self] = wrapped
+    }
+    return node
   }
 }

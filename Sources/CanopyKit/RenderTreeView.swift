@@ -118,11 +118,19 @@ private struct VisibleRenderNodeView: View {
     let width = nodeView.frame.width
     let height = nodeView.frame.height
 
-    nodeContent(node)
+    let base = nodeContent(node)
       .frame(width: width, height: height, alignment: .topLeading)
 //      .opacity(nodeView.opacity)
 //      .modifier(NodeClipModifier(path: node.values[ClipPathKey.self], size: CGSize(width: width, height: height)))
       .modifier(NodeGestureModifier(gesture: node.values[GestureKey.self]))
+
+    let decorated: AnyView = if let viewModifier = node.values[ViewModifierKey.self] {
+      viewModifier.apply(to: base)
+    } else {
+      AnyView(base)
+    }
+
+    decorated
       .offset(
         x: positionsAbsolutely ? nodeView.frame.minX : 0,
         y: positionsAbsolutely ? nodeView.frame.minY : 0
