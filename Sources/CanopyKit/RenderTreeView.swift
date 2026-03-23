@@ -138,7 +138,14 @@ private struct VisibleRenderNodeView: View {
   private func nodeContent(_ node: ResolvedRenderNode) -> some View {
     switch node.content {
     case let .primitive(_, commitment):
-      PrimitiveCanvas(node: node, commitment: commitment)
+      switch commitment {
+      case let .path(path):
+        path
+      case let .customDrawing(drawing, storedCache):
+        DrawingCanvas(drawing: drawing, storedCache: storedCache)
+      case nil:
+        Color.clear
+      }
 
     case .component, .layout:
       GeometryReader { _ in
@@ -154,37 +161,19 @@ private struct VisibleRenderNodeView: View {
   }
 }
 
-private struct PrimitiveCanvas: View {
-  let node: ResolvedRenderNode
-  let commitment: PrimitiveCommitment?
+private struct DrawingCanvas: View {
+  let drawing: AnyDrawing
+  let storedCache: Any?
 
   var body: some View {
     Canvas { context, size in
-      switch commitment {
-      case let .path(path):
-        if let fillColor = node.values[PrimitiveFillColorKey.self] {
-          context.fill(path, with: .color(Color(cgColor: fillColor)))
-        }
-        if let strokeStyle = node.values[PrimitiveStrokeStyleKey.self] {
-          context.stroke(
-            path,
-            with: .color(Color(cgColor: strokeStyle.color)),
-            lineWidth: strokeStyle.lineWidth
-          )
-        }
-
-      case let .customDrawing(drawing, storedCache):
-        context.withCGContext { cgContext in
-          var cache = storedCache ?? drawing.makeCache()
-          drawing.draw(
-            in: cgContext,
-            bounds: CGRect(origin: .zero, size: size),
-            cache: &cache
-          )
-        }
-
-      case nil:
-        break
+      context.withCGContext { cgContext in
+        var cache = storedCache ?? drawing.makeCache()
+        drawing.draw(
+          in: cgContext,
+          bounds: CGRect(origin: .zero, size: size),
+          cache: &cache
+        )
       }
     }
   }

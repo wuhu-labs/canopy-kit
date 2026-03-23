@@ -522,9 +522,18 @@ struct ToolCallComponent: Component {
         ),
       ]
     )
-    .onTapGesture { [weak model] in
+    .viewModifier(TapGestureModifier(action: { [weak model] in
       model?.isExpanded.toggle()
-    }
+    }))
+  }
+}
+
+
+private struct TapGestureModifier: ViewModifier {
+  let action: () -> Void
+
+  func body(content: Content) -> some View {
+    content.onTapGesture(perform: action)
   }
 }
 

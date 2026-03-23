@@ -108,9 +108,12 @@ private struct TrackingDrawing: CustomDrawing {
     #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
   }
 
-  @Test func viewModifierKeyIsSetByOnTapGesture() {
+  @Test func viewModifierKeyIsSetByViewModifier() {
+    struct TestModifier: ViewModifier {
+      func body(content: Content) -> some View { content }
+    }
     let node = Node.primitive(.customDrawing(fixedDrawing(width: 60, height: 20)))
-      .onTapGesture {}
+      .viewModifier(TestModifier())
 
     #expect(node.values[ViewModifierKey.self] != nil)
   }

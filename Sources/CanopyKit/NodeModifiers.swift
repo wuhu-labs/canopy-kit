@@ -49,11 +49,6 @@ public extension Node {
   func clip(_ path: Path?) -> Self {
     viewModifier(_ClipModifier(path: path))
   }
-
-  @MainActor
-  func onTapGesture(_ action: @escaping () -> Void) -> Self {
-    viewModifier(_TapGestureModifier(action: action))
-  }
 }
 
 public extension IdentifiedNode {
@@ -80,11 +75,6 @@ public extension IdentifiedNode {
 
   func clip(_ path: Path?) -> Self {
     viewModifier(_ClipModifier(path: path))
-  }
-
-  @MainActor
-  func onTapGesture(_ action: @escaping () -> Void) -> Self {
-    viewModifier(_TapGestureModifier(action: action))
   }
 }
 
@@ -113,15 +103,5 @@ struct _ClipModifier: ViewModifier {
     } else {
       AnyView(content)
     }
-  }
-}
-
-struct _TapGestureModifier: ViewModifier {
-  let action: () -> Void
-
-  func body(content: Content) -> some View {
-    content
-      .contentShape(Rectangle())
-      .onTapGesture(perform: action)
   }
 }
