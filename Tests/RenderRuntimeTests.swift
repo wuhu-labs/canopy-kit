@@ -187,13 +187,13 @@ private struct TrackingDrawing: CustomDrawing {
 
     let initialRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.drawing(AnyDrawing(TrackingDrawing(token: 1, recorder: recorder))))
+      content: .primitive(.drawing(TrackingDrawing(token: 1, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: initialRoot, proposal: ProposedSize(width: 100, height: nil))
 
     let updatedRoot = ResolvedNode(
       id: NodeID(rawValue: 1),
-      content: .primitive(.drawing(AnyDrawing(TrackingDrawing(token: 2, recorder: recorder))))
+      content: .primitive(.drawing(TrackingDrawing(token: 2, recorder: recorder)))
     )
     _ = runtime.sizeThatFits(root: updatedRoot, proposal: ProposedSize(width: 100, height: nil))
 

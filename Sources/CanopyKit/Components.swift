@@ -81,12 +81,8 @@ public extension Node {
     Self(content: .primitive(primitive), values: values)
   }
 
-  static func drawing(_ drawing: AnyDrawing, values: NodeValues = NodeValues()) -> Self {
-    primitive(.drawing(drawing), values: values)
-  }
-
   static func drawing(_ drawing: some CustomDrawing, values: NodeValues = NodeValues()) -> Self {
-    Self.drawing(AnyDrawing(drawing), values: values)
+    Self.primitive(.init(drawing), values: values)
   }
 
   static func shape(_ shape: AnyShape, values: NodeValues = NodeValues()) -> Self {
@@ -116,12 +112,12 @@ public extension Node {
 
   /// Convenience: creates a text drawing node.
   static func text(_ string: String, fontSize: CGFloat = 14) -> Self {
-    drawing(AnyDrawing(TextDrawing(string, fontSize: fontSize)))
+    drawing(TextDrawing(string, fontSize: fontSize))
   }
 
   /// Convenience: creates a text drawing node from an attributed string.
   static func text(attributedString: CFAttributedString) -> Self {
-    drawing(AnyDrawing(TextDrawing(attributedString: attributedString)))
+    drawing(TextDrawing(attributedString: attributedString))
   }
 
   // MARK: Layout Convenience (NodeBuilder)
@@ -174,18 +170,10 @@ public extension IdentifiedNode {
 
   static func drawing(
     key: some Hashable,
-    _ drawing: AnyDrawing,
-    values: NodeValues = NodeValues()
-  ) -> Self {
-    Self(id: key, node: .drawing(drawing, values: values))
-  }
-
-  static func drawing(
-    key: some Hashable,
     _ drawing: some CustomDrawing,
     values: NodeValues = NodeValues()
   ) -> Self {
-    Self(id: key, node: .drawing(AnyDrawing(drawing), values: values))
+    Self.primitive(key: key, .init(drawing), values: values)
   }
 
   static func shape(
@@ -339,7 +327,7 @@ public final class ComponentRenderer {
       ),
     ]
     dirtyIDs = [.root]
-    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.drawing(AnyDrawing(PlaceholderDrawing()))))
+    resolvedRoot = ResolvedNode(id: .root, content: .primitive(.drawing(PlaceholderDrawing())))
     refresh()
   }
 

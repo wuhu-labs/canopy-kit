@@ -233,13 +233,13 @@ struct MessageComponent: Component {
     children.append(
       .drawing(
         key: "header",
-        AnyDrawing(TextDrawing(
+        TextDrawing(
           attributedString: makeHeaderAttributedString(
             author: author,
             timestamp: timestamp,
             color: SessionColors.userHeaderColor
           )
-        ))
+        )
       )
     )
 
@@ -282,9 +282,9 @@ struct MessageComponent: Component {
       children.append(
         .drawing(
           key: "header",
-          AnyDrawing(TextDrawing(
+          TextDrawing(
             attributedString: makeStreamingHeaderAttributedString()
-          ))
+          )
         )
       )
     } else {
@@ -292,13 +292,13 @@ struct MessageComponent: Component {
       children.append(
         .drawing(
           key: "header",
-          AnyDrawing(TextDrawing(
+          TextDrawing(
             attributedString: makeHeaderAttributedString(
               author: "Agent",
               timestamp: timestamp,
               color: SessionColors.assistantHeaderColor
             )
-          ))
+          )
         )
       )
     }
@@ -388,14 +388,14 @@ struct ToolCallComponent: Component {
     children.append(
       .drawing(
         key: "label",
-        AnyDrawing(TextDrawing(
+        TextDrawing(
           attributedString: makeToolCallAttributedString(
             name: model.name,
             args: model.arguments,
             isExpanded: model.isExpanded,
             hasResult: !model.result.isEmpty
           )
-        ))
+        )
       )
     )
 
@@ -616,13 +616,13 @@ struct RichCodeBlockComponent: Component, Equatable {
       children.append(
         .drawing(
           key: "lang",
-          AnyDrawing(TextDrawing(
+          TextDrawing(
             attributedString: makeMonoAttributedString(
               language,
               fontSize: 10,
               color: SessionColors.secondaryTextColor
             )
-          ))
+          )
         )
       )
     }
@@ -630,13 +630,13 @@ struct RichCodeBlockComponent: Component, Equatable {
     children.append(
       .drawing(
         key: "code",
-        AnyDrawing(TextDrawing(
+        TextDrawing(
           attributedString: makeMonoAttributedString(
             code.hasSuffix("\n") ? String(code.dropLast()) : code,
             fontSize: 12,
             color: CGColor(gray: 0.15, alpha: 1)
           )
-        ))
+        )
       )
     )
 

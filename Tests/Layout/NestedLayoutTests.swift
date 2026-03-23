@@ -125,7 +125,7 @@ import Testing
     root.layoutPass(width: 200)
     #expect(root.frame.height == 20)
 
-    child.content = .leaf(AnyDrawing(FixedSizeDrawing(width: 100, height: 60)))
+    child.content = .primitive(.drawing(FixedSizeDrawing(width: 100, height: 60)))
     child.invalidateLayout()
 
     root.layoutPass(width: 200)
@@ -143,7 +143,7 @@ import Testing
     root.layoutPass(width: 400)
     #expect(root.frame.height == 28)
 
-    body.content = .leaf(AnyDrawing(FixedSizeDrawing(width: 300, height: 80)))
+    body.content = .primitive(.drawing(FixedSizeDrawing(width: 300, height: 80)))
     body.invalidateLayout()
 
     root.layoutPass(width: 400)

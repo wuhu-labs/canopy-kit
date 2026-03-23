@@ -22,12 +22,8 @@ public struct Primitive: @unchecked Sendable {
     Self(representable)
   }
 
-  public static func drawing(_ drawing: AnyDrawing) -> Self {
-    Self(AnyViewRepresentable(drawing: drawing))
-  }
-
   public static func drawing(_ drawing: some CustomDrawing) -> Self {
-    Self.drawing(AnyDrawing(drawing))
+    Self(drawing)
   }
 
   public static func shape(_ shape: AnyShape) -> Self {
@@ -40,11 +36,6 @@ public struct Primitive: @unchecked Sendable {
 
   public static func shape(_ shape: some Shape) -> Self {
     Self.shape(AnyShape(shape))
-  }
-
-  @available(*, deprecated, renamed: "drawing")
-  public static func customDrawing(_ drawing: AnyDrawing) -> Self {
-    Self.drawing(drawing)
   }
 
   @available(*, deprecated, renamed: "view")

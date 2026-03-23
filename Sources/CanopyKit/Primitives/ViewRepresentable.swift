@@ -66,10 +66,6 @@ extension AnyViewRepresentable {
   init(shape: AnyShape) {
     self.init(ShapeViewRepresentable(shape: shape))
   }
-
-  init(drawing: AnyDrawing) {
-    self.init(DrawingViewRepresentable(drawing: drawing))
-  }
 }
 
 private func _compareViewRepresentable<V: CustomViewRepresentable>(
@@ -146,52 +142,5 @@ private struct ShapeViewRepresentable: CustomViewRepresentable, Equatable {
 
   static func == (lhs: Self, rhs: Self) -> Bool {
     lhs.shape.isEquivalent(to: rhs.shape)
-  }
-}
-
-private struct DrawingViewRepresentable: CustomViewRepresentable, Equatable {
-  typealias Cache = Any
-  typealias Commitment = Any
-
-  let drawing: AnyDrawing
-
-  func makeCache() -> Any {
-    drawing.makeCache()
-  }
-
-  func updateCache(_ cache: inout Any) {
-    drawing.updateCache(cache: &cache)
-  }
-
-  func sizeThatFits(proposal: ProposedSize, cache: inout Any) -> CGSize {
-    drawing.sizeThatFits(proposal: proposal, cache: &cache)
-  }
-
-  func makeCommitment(in bounds: CGRect, cache: Any) -> Any {
-    drawing.makeCommitment(in: bounds, cache: cache)
-  }
-
-  func makeView(commitment: Any) -> some View {
-    DrawingPrimitiveView(drawing: drawing, commitment: commitment)
-  }
-
-  static func == (lhs: Self, rhs: Self) -> Bool {
-    lhs.drawing.isEquivalent(to: rhs.drawing)
-  }
-}
-
-private struct DrawingPrimitiveView: View {
-  let drawing: AnyDrawing
-  let commitment: Any
-
-  var body: some View {
-    Canvas { context, size in
-      context.withCGContext { cgContext in
-        drawing.draw(
-          in: cgContext,
-          commitment: commitment
-        )
-      }
-    }
   }
 }

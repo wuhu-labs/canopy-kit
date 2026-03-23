@@ -101,7 +101,7 @@ struct TapGestureDemoComponent: Component {
               ),
               .drawing(
                 key: "label",
-                AnyDrawing(TextDrawing("\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")", fontSize: 16))
+                TextDrawing("\(counter.label): tapped \(counter.count) time\(counter.count == 1 ? "" : "s")", fontSize: 16)
               ),
             ]
           )

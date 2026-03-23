@@ -104,9 +104,9 @@ private struct SemanticNodeValueKey: NodeValueKey {
     #expect(lhs.isEquivalent(to: rhs))
   }
 
-  @Test func anyDrawingUsesEquatableByDefault() {
-    let lhs = AnyDrawing(SemanticDrawing(semanticID: 1, incidentalID: 10))
-    let rhs = AnyDrawing(SemanticDrawing(semanticID: 1, incidentalID: 20))
+  @Test func primitiveDrawingUsesEquatableByDefault() {
+    let lhs = Primitive.drawing(SemanticDrawing(semanticID: 1, incidentalID: 10))
+    let rhs = Primitive.drawing(SemanticDrawing(semanticID: 1, incidentalID: 20))
 
     #expect(lhs.isEquivalent(to: rhs))
   }

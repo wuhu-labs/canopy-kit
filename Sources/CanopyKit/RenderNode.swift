@@ -7,10 +7,6 @@ public final class RenderNode {
     case component(AnyComponent, RenderNode)
     case primitive(Primitive)
     case container(AnyLayout, [RenderNode])
-
-    public static func leaf(_ drawing: AnyDrawing) -> Self {
-      .primitive(.drawing(drawing))
-    }
   }
 
   public let nodeID: NodeID
@@ -44,25 +40,6 @@ public final class RenderNode {
     self.content = content
     self.resolvedNode = resolvedNode
     updateChildParents(from: nil, to: content)
-  }
-
-  public static func leaf(
-    _ drawing: AnyDrawing,
-    nodeID: NodeID? = nil,
-    values: NodeValues = NodeValues()
-  ) -> RenderNode {
-    let nodeID = nodeID ?? temporaryNodeID()
-    let resolved = ResolvedNode(
-      id: nodeID,
-      content: .primitive(.drawing(drawing)),
-      values: values
-    )
-    return RenderNode(
-      .primitive(.drawing(drawing)),
-      nodeID: nodeID,
-      values: values,
-      resolvedNode: resolved
-    )
   }
 
   public static func container(

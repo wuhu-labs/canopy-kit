@@ -99,11 +99,11 @@ struct ParagraphCardComponent: Component, Equatable {
       children: [
         .drawing(
           key: "label",
-          AnyDrawing(TextDrawing("Paragraph \(paragraph.id)", fontSize: 12))
+          TextDrawing("Paragraph \(paragraph.id)", fontSize: 12)
         ),
         .drawing(
           key: "text",
-          AnyDrawing(TextDrawing(paragraph.text, fontSize: 14))
+          TextDrawing(paragraph.text, fontSize: 14)
         ),
         .layout(
           key: "rule",

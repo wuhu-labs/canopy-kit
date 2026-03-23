@@ -61,17 +61,37 @@ struct FlexibleDrawing: CustomDrawing {
 // MARK: - Convenience Constructors
 
 func fixedLeaf(width: CGFloat, height: CGFloat) -> RenderNode {
-  .leaf(AnyDrawing(FixedSizeDrawing(width: width, height: height)))
+  let drawing = FixedSizeDrawing(width: width, height: height)
+  let nodeID = NodeID(rawValue: Int.random(in: 1 ... Int.max))
+  let resolvedNode = ResolvedNode(
+    id: nodeID,
+    content: .primitive(.drawing(drawing))
+  )
+  return RenderNode(
+    .primitive(.drawing(drawing)),
+    nodeID: nodeID,
+    resolvedNode: resolvedNode
+  )
 }
 
-func fixedDrawing(width: CGFloat, height: CGFloat) -> AnyDrawing {
-  AnyDrawing(FixedSizeDrawing(width: width, height: height))
+func fixedDrawing(width: CGFloat, height: CGFloat) -> FixedSizeDrawing {
+  FixedSizeDrawing(width: width, height: height)
 }
 
 func flexibleLeaf(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> RenderNode {
-  .leaf(AnyDrawing(FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight)))
+  let drawing = FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight)
+  let nodeID = NodeID(rawValue: Int.random(in: 1 ... Int.max))
+  let resolvedNode = ResolvedNode(
+    id: nodeID,
+    content: .primitive(.drawing(drawing))
+  )
+  return RenderNode(
+    .primitive(.drawing(drawing)),
+    nodeID: nodeID,
+    resolvedNode: resolvedNode
+  )
 }
 
-func flexibleDrawing(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> AnyDrawing {
-  AnyDrawing(FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight))
+func flexibleDrawing(idealWidth: CGFloat = 10, idealHeight: CGFloat = 10) -> FlexibleDrawing {
+  FlexibleDrawing(idealWidth: idealWidth, idealHeight: idealHeight)
 }
