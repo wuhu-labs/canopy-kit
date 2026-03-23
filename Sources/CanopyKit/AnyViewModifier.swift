@@ -17,37 +17,36 @@ import SwiftUI
 /// CanopyKit's layout engine does not see these — they are applied purely at
 /// the SwiftUI materialization layer.
 public struct AnyViewModifier: @unchecked Sendable {
-  private let _apply: @MainActor (AnyView) -> AnyView
+  private var modifier: any ViewModifier
 
   /// Wraps a concrete `ViewModifier`.
   public init<M: ViewModifier>(_ modifier: M) {
     // Copy modifier into a nonisolated(unsafe) capture to cross the
     // isolation boundary. This is safe because AnyViewModifier is only
     // ever applied on the main actor (SwiftUI materialization).
-    nonisolated(unsafe) let m = modifier
-    _apply = { view in AnyView(view.modifier(m)) }
+    self.modifier = modifier
   }
 
-  /// The identity modifier — applies no transformation.
-  public static let identity = AnyViewModifier(apply: { $0 })
+  private init(erased: any ViewModifier) {
+    modifier = erased
+  }
 
   /// Returns a new modifier that applies `self` first, then `other`.
   public func concat(_ other: AnyViewModifier) -> AnyViewModifier {
-    let lhs = self._apply
-    let rhs = other._apply
-    return AnyViewModifier(apply: { view in rhs(lhs(view)) })
+    AnyViewModifier(concatModifier(m1: modifier, m2: other.modifier))
   }
 
-  /// Applies this modifier to the given view.
-  @MainActor
-  public func apply<V: View>(to view: V) -> AnyView {
-    _apply(AnyView(view))
+  public func apply(to view: some View) -> AnyView {
+    applyModifier(body: view, modifier: modifier)
   }
+}
 
-  // Internal initializer for identity / concat construction.
-  private init(apply: @escaping @MainActor (AnyView) -> AnyView) {
-    _apply = apply
-  }
+private func concatModifier(m1: some ViewModifier, m2: some ViewModifier) -> some ViewModifier {
+  return m1.concat(m2)
+}
+
+private func applyModifier(body: some View, modifier: some ViewModifier) -> AnyView {
+  AnyView(body.modifier(modifier))
 }
 
 // MARK: - Node Value Key
