@@ -42,16 +42,15 @@ public extension Node {
     return node
   }
 
-  @MainActor
   func opacity(_ opacity: CGFloat) -> Self {
     viewModifier(_OpacityModifier(opacity: opacity))
   }
 
-  @MainActor
   func clip(_ path: Path?) -> Self {
     viewModifier(_ClipModifier(path: path))
   }
 
+  @MainActor
   func onTapGesture(_ action: @escaping () -> Void) -> Self {
     viewModifier(_TapGestureModifier(action: action))
   }
@@ -75,16 +74,15 @@ public extension IdentifiedNode {
     return node
   }
 
-  @MainActor
   func opacity(_ opacity: CGFloat) -> Self {
     viewModifier(_OpacityModifier(opacity: opacity))
   }
 
-  @MainActor
   func clip(_ path: Path?) -> Self {
     viewModifier(_ClipModifier(path: path))
   }
 
+  @MainActor
   func onTapGesture(_ action: @escaping () -> Void) -> Self {
     viewModifier(_TapGestureModifier(action: action))
   }
@@ -119,11 +117,7 @@ struct _ClipModifier: ViewModifier {
 }
 
 struct _TapGestureModifier: ViewModifier {
-  nonisolated(unsafe) let action: () -> Void
-
-  nonisolated init(action: @escaping () -> Void) {
-    self.action = action
-  }
+  let action: () -> Void
 
   func body(content: Content) -> some View {
     content

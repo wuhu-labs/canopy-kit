@@ -29,6 +29,7 @@ private struct PendingEntry: Comparable {
   }
 }
 
+@MainActor
 public protocol Component {
   func body() -> Node
 }
@@ -139,6 +140,7 @@ public struct AnyComponent: @unchecked Sendable {
     value = component
   }
 
+  @MainActor
   public func body() -> Node {
     value.body()
   }

@@ -82,7 +82,7 @@ struct ThematicBreakComponent: Component, Equatable {
 }
 
 struct BlockQuoteComponent: Component, Equatable {
-  let childBlocks: [BlockData]
+  nonisolated let childBlocks: [BlockData]
 
   func body() -> Node {
     .layout(
@@ -120,7 +120,7 @@ struct BlockQuoteComponent: Component, Equatable {
 }
 
 struct UnorderedListComponent: Component, Equatable {
-  let items: [ListItemData]
+  nonisolated let items: [ListItemData]
 
   func body() -> Node {
     .layout(
@@ -138,8 +138,8 @@ struct UnorderedListComponent: Component, Equatable {
 }
 
 struct OrderedListComponent: Component, Equatable {
-  let startIndex: UInt
-  let items: [ListItemData]
+  nonisolated let startIndex: UInt
+  nonisolated let items: [ListItemData]
 
   func body() -> Node {
     .layout(
@@ -160,8 +160,8 @@ struct OrderedListComponent: Component, Equatable {
 }
 
 struct ListItemComponent: Component, Equatable {
-  let marker: String
-  let item: ListItemData
+  nonisolated let marker: String
+  nonisolated let item: ListItemData
 
   func body() -> Node {
     .layout(
@@ -195,7 +195,7 @@ struct FallbackTextComponent: Component, Equatable {
 
 // MARK: - Extracted Data (Equatable, value types)
 
-enum BlockData: Equatable {
+enum BlockData: Equatable, Sendable {
   case heading(text: String, level: Int)
   case paragraph(text: String)
   case codeBlock(code: String)
@@ -206,7 +206,7 @@ enum BlockData: Equatable {
   case fallbackText(text: String)
 }
 
-struct ListItemData: Equatable {
+struct ListItemData: Equatable, Sendable {
   let childBlocks: [BlockData]
 }
 
@@ -253,6 +253,7 @@ private func extractBlockData(_ markup: Markup) -> BlockData? {
 
 // MARK: - Data → Component Nodes
 
+@MainActor
 private func blockComponentFromData(_ block: BlockData, key: String) -> IdentifiedNode? {
   switch block {
   case let .heading(text, level):
@@ -282,6 +283,7 @@ private func blockComponentFromData(_ block: BlockData, key: String) -> Identifi
 }
 
 /// Bridge from Markup AST directly to component node (used by MarkdownDocumentComponent.body).
+@MainActor
 private func blockComponent(_ markup: Markup, key: String) -> IdentifiedNode? {
   guard let data = extractBlockData(markup) else { return nil }
   return blockComponentFromData(data, key: key)

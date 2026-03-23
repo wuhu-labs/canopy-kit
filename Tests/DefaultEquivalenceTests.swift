@@ -4,10 +4,10 @@ import Testing
 @testable import CanopyKit
 
 private struct SemanticComponent: Component, Equatable {
-  let semanticID: Int
-  let incidentalID: Int
+  nonisolated let semanticID: Int
+  nonisolated let incidentalID: Int
 
-  static func == (lhs: SemanticComponent, rhs: SemanticComponent) -> Bool {
+  nonisolated static func == (lhs: SemanticComponent, rhs: SemanticComponent) -> Bool {
     lhs.semanticID == rhs.semanticID
   }
 

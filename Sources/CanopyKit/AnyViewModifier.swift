@@ -21,9 +21,6 @@ public struct AnyViewModifier: @unchecked Sendable {
 
   /// Wraps a concrete `ViewModifier`.
   public init<M: ViewModifier>(_ modifier: M) {
-    // Copy modifier into a nonisolated(unsafe) capture to cross the
-    // isolation boundary. This is safe because AnyViewModifier is only
-    // ever applied on the main actor (SwiftUI materialization).
     self.modifier = modifier
   }
 
