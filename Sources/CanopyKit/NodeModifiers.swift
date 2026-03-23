@@ -14,56 +14,13 @@ public struct FlexGrowKey: NodeValueKey {
   public static let defaultValue: CGFloat = 0
 }
 
-public final class NodeGesture: @unchecked Sendable {
-  public var onTap: (() -> Void)?
-  public var onDoubleTap: (() -> Void)?
-  public var onLongPress: (() -> Void)?
-  public var onHover: ((Bool) -> Void)?
-  public var onDragChanged: ((DragGesture.Value) -> Void)?
-  public var onDragEnded: ((DragGesture.Value) -> Void)?
-
-  public init(
-    onTap: (() -> Void)? = nil,
-    onDoubleTap: (() -> Void)? = nil,
-    onLongPress: (() -> Void)? = nil,
-    onHover: ((Bool) -> Void)? = nil,
-    onDragChanged: ((DragGesture.Value) -> Void)? = nil,
-    onDragEnded: ((DragGesture.Value) -> Void)? = nil
-  ) {
-    self.onTap = onTap
-    self.onDoubleTap = onDoubleTap
-    self.onLongPress = onLongPress
-    self.onHover = onHover
-    self.onDragChanged = onDragChanged
-    self.onDragEnded = onDragEnded
-  }
-}
-
-public struct GestureKey: NodeValueKey {
-  public static let defaultValue: NodeGesture? = nil
-}
+// MARK: - Node Modifier API
 
 public extension Node {
   func value<K: NodeValueKey>(_ key: K.Type, _ value: K.Value) -> Self {
     var node = self
     node.values[key] = value
     return node
-  }
-
-  func opacity(_ opacity: CGFloat) -> Self {
-    value(OpacityKey.self, opacity)
-  }
-
-  func clip(_ path: Path?) -> Self {
-    value(ClipPathKey.self, path)
-  }
-
-  func gesture(_ gesture: NodeGesture?) -> Self {
-    value(GestureKey.self, gesture)
-  }
-
-  func onTapGesture(_ action: @escaping () -> Void) -> Self {
-    gesture(NodeGesture(onTap: action))
   }
 
   /// Attach an arbitrary SwiftUI `ViewModifier` to this node.
@@ -84,6 +41,20 @@ public extension Node {
     }
     return node
   }
+
+  @MainActor
+  func opacity(_ opacity: CGFloat) -> Self {
+    viewModifier(_OpacityModifier(opacity: opacity))
+  }
+
+  @MainActor
+  func clip(_ path: Path?) -> Self {
+    viewModifier(_ClipModifier(path: path))
+  }
+
+  func onTapGesture(_ action: @escaping () -> Void) -> Self {
+    viewModifier(_TapGestureModifier(action: action))
+  }
 }
 
 public extension IdentifiedNode {
@@ -93,30 +64,6 @@ public extension IdentifiedNode {
     return node
   }
 
-  func opacity(_ opacity: CGFloat) -> Self {
-    value(OpacityKey.self, opacity)
-  }
-
-  func clip(_ path: Path?) -> Self {
-    value(ClipPathKey.self, path)
-  }
-
-  func gesture(_ gesture: NodeGesture?) -> Self {
-    value(GestureKey.self, gesture)
-  }
-
-  func onTapGesture(_ action: @escaping () -> Void) -> Self {
-    gesture(NodeGesture(onTap: action))
-  }
-
-  /// Attach an arbitrary SwiftUI `ViewModifier` to this node.
-  ///
-  /// The modifier is applied at SwiftUI materialization time and does **not**
-  /// participate in CanopyKit's layout engine. The caller is responsible for
-  /// only attaching layout-independent modifiers.
-  ///
-  /// Multiple calls concatenate: the modifiers are applied left-to-right in
-  /// the order they were attached.
   func viewModifier<M: ViewModifier>(_ modifier: M) -> Self {
     var node = self
     let wrapped = AnyViewModifier(modifier)
@@ -126,5 +73,61 @@ public extension IdentifiedNode {
       node.node.values[ViewModifierKey.self] = wrapped
     }
     return node
+  }
+
+  @MainActor
+  func opacity(_ opacity: CGFloat) -> Self {
+    viewModifier(_OpacityModifier(opacity: opacity))
+  }
+
+  @MainActor
+  func clip(_ path: Path?) -> Self {
+    viewModifier(_ClipModifier(path: path))
+  }
+
+  func onTapGesture(_ action: @escaping () -> Void) -> Self {
+    viewModifier(_TapGestureModifier(action: action))
+  }
+}
+
+// MARK: - Built-in View Modifiers
+
+struct _OpacityModifier: ViewModifier {
+  let opacity: CGFloat
+
+  func body(content: Content) -> some View {
+    content.opacity(opacity)
+  }
+}
+
+struct _ClipModifier: ViewModifier {
+  let path: Path?
+
+  func body(content: Content) -> some View {
+    if let path {
+      AnyView(
+        content.mask(
+          Canvas { context, _ in
+            context.fill(path, with: .color(.white))
+          }
+        )
+      )
+    } else {
+      AnyView(content)
+    }
+  }
+}
+
+struct _TapGestureModifier: ViewModifier {
+  nonisolated(unsafe) let action: () -> Void
+
+  nonisolated init(action: @escaping () -> Void) {
+    self.action = action
+  }
+
+  func body(content: Content) -> some View {
+    content
+      .contentShape(Rectangle())
+      .onTapGesture(perform: action)
   }
 }

@@ -120,9 +120,6 @@ private struct VisibleRenderNodeView: View {
 
     let base = nodeContent(node)
       .frame(width: width, height: height, alignment: .topLeading)
-//      .opacity(nodeView.opacity)
-//      .modifier(NodeClipModifier(path: node.values[ClipPathKey.self], size: CGSize(width: width, height: height)))
-      .modifier(NodeGestureModifier(gesture: node.values[GestureKey.self]))
 
     let decorated: AnyView = if let viewModifier = node.values[ViewModifierKey.self] {
       viewModifier.apply(to: base)
@@ -193,55 +190,4 @@ private struct PrimitiveCanvas: View {
   }
 }
 
-private struct NodeClipModifier: ViewModifier {
-  let path: Path?
-  let size: CGSize
 
-  func body(content: Content) -> some View {
-    guard let path else { return AnyView(content) }
-    return AnyView(
-      content.mask(
-        Canvas { context, _ in
-          context.fill(path, with: .color(.white))
-        }
-        .frame(width: size.width, height: size.height)
-      )
-    )
-  }
-}
-
-private struct NodeGestureModifier: ViewModifier {
-  let gesture: NodeGesture?
-
-  func body(content: Content) -> some View {
-    var view = AnyView(content.contentShape(Rectangle()))
-
-    if let onTap = gesture?.onTap {
-      view = AnyView(view.onTapGesture(perform: onTap))
-    }
-    if let onDoubleTap = gesture?.onDoubleTap {
-      view = AnyView(view.onTapGesture(count: 2, perform: onDoubleTap))
-    }
-    if let onLongPress = gesture?.onLongPress {
-      view = AnyView(view.onLongPressGesture(perform: onLongPress))
-    }
-    if let onHover = gesture?.onHover {
-      view = AnyView(view.onHover(perform: onHover))
-    }
-    if gesture?.onDragChanged != nil || gesture?.onDragEnded != nil {
-      view = AnyView(
-        view.gesture(
-          DragGesture()
-            .onChanged { value in
-              gesture?.onDragChanged?(value)
-            }
-            .onEnded { value in
-              gesture?.onDragEnded?(value)
-            }
-        )
-      )
-    }
-
-    return view
-  }
-}

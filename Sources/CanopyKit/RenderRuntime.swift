@@ -65,7 +65,6 @@ public final class ResolvedRenderNode: Identifiable, @unchecked Sendable {
 public struct ResolvedRenderNodeView {
   public let node: ResolvedRenderNode
   public let frame: CGRect
-  public let opacity: CGFloat
   public let viewport: CGRect
 
   /// Lazily projects visible children by intersecting each child's bounding
@@ -91,7 +90,6 @@ public struct ResolvedRenderNodeView {
 
     self.node = node
     self.frame = frame
-    self.opacity = node.values[OpacityKey.self]
     self.viewport = viewport
   }
 

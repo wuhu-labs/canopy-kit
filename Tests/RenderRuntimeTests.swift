@@ -108,17 +108,11 @@ private struct TrackingDrawing: CustomDrawing {
     #expect(leaf.values[PrimitiveStrokeStyleKey.self]?.lineWidth == 2)
   }
 
-  @Test func gestureModifierStoresHandlersInNodeValues() {
-    let tapped = NodeGesture(onTap: {})
-    var values = NodeValues()
-    values[GestureKey.self] = tapped
-    let root = ResolvedNode(
-      id: .root,
-      content: .primitive(.customDrawing(fixedDrawing(width: 60, height: 20))),
-      values: values
-    )
+  @Test func viewModifierKeyIsSetByOnTapGesture() {
+    let node = Node.primitive(.customDrawing(fixedDrawing(width: 60, height: 20)))
+      .onTapGesture {}
 
-    #expect(root.values[GestureKey.self] === tapped)
+    #expect(node.values[ViewModifierKey.self] != nil)
   }
 
   @Test func unchangedResolvedSubtreesArePointerSharedAcrossRefreshes() async throws {
